@@ -1,11 +1,23 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Custom PANDORA theme */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-pandora-dark: #0a1628;
+    --color-pandora-surface: #111d33;
+    --color-pandora-surface-light: #182742;
+    --color-pandora-primary: #1e3a5f;
+    --color-pandora-primary-light: #2a5298;
+    --color-pandora-accent: #00b4d8;
+    --color-pandora-accent-glow: #00d4ff;
+    --color-pandora-gold: #f0a500;
+    --color-pandora-text: #e0e6ed;
+    --color-pandora-muted: #8899aa;
+    --color-pandora-success: #00c48c;
+    --color-pandora-danger: #ff4757;
+    --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }

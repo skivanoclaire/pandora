@@ -57,9 +57,20 @@ services:
     volumes:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d
       - ./src/public:/var/www/public:ro
+      - pandora-certbot-webroot:/var/www/certbot:ro
+      - pandora-certbot-certs:/etc/letsencrypt:ro
     depends_on:
       - pandora-app
       - pandora-analytics
+    networks:
+      - pandora-network
+
+  pandora-certbot:
+    image: certbot/certbot:latest
+    container_name: pandora-certbot
+    volumes:
+      - pandora-certbot-webroot:/var/www/certbot
+      - pandora-certbot-certs:/etc/letsencrypt
     networks:
       - pandora-network
 
@@ -121,6 +132,8 @@ services:
 volumes:
   pandora-db-data:
   pandora-redis-data:
+  pandora-certbot-webroot:
+  pandora-certbot-certs:
 
 networks:
   pandora-network:

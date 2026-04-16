@@ -37,6 +37,5 @@ Thumbs.db
 # Docker volumes (persisted data)
 docker/volumes/
 
-# Compiled assets
-src/public/build/
+# Vite dev server
 src/public/hot
