@@ -1,0 +1,42 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Laravel
+src/vendor/
+src/node_modules/
+src/storage/logs/*
+src/storage/framework/cache/*
+src/storage/framework/sessions/*
+src/storage/framework/views/*
+src/bootstrap/cache/*
+!src/storage/logs/.gitkeep
+!src/storage/framework/cache/.gitkeep
+!src/storage/framework/sessions/.gitkeep
+!src/storage/framework/views/.gitkeep
+!src/bootstrap/cache/.gitkeep
+
+# Python
+analytics/__pycache__/
+analytics/.venv/
+analytics/*.pyc
+analytics/.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (persisted data)
+docker/volumes/
+
+# Compiled assets
+src/public/build/
+src/public/hot
