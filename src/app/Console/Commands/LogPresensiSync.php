@@ -27,10 +27,11 @@ class LogPresensiSync extends Command
 
         $this->info("Sync log_presensi_pandora dari present_sikara_log: {$startDate} s/d {$endDate}");
 
-        // Get existing id_log yang sudah di-sync (cegah duplikat)
+        // Get existing id_log yang sudah di-sync untuk date range ini (cegah duplikat)
         $existingLogs = DB::table('log_presensi_pandora')
             ->where('source', 'sikara_log')
             ->whereNotNull('metadata')
+            ->whereBetween(DB::raw("waktu::date"), [$startDate, $endDate])
             ->selectRaw("metadata->>'id_log' as id_log")
             ->pluck('id_log')
             ->filter()
