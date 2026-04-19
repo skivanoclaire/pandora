@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/analitik/tren/{tanggal}', [AnalitikController::class, 'trenDetail'])->name('analitik.tren.detail');
     Route::get('/analitik/tren/{tanggal}/dinas', [AnalitikController::class, 'trenDinas'])->name('analitik.tren.dinas');
     Route::get('/analitik/tren/{tanggal}/ijin/{kategori}', [AnalitikController::class, 'trenIjin'])->name('analitik.tren.ijin');
+    Route::get('/analitik/tren/{tanggal}/tanpa-keterangan', [AnalitikController::class, 'trenTanpaKeterangan'])->name('analitik.tren.tanpa-keterangan');
     Route::get('/analitik/anomali', [AnalitikController::class, 'anomali']);
     Route::get('/analitik/anomali/{id}', [AnalitikController::class, 'detailAnomali'])->name('analitik.anomali.detail');
     Route::patch('/analitik/anomali/{id}/review', [AnalitikController::class, 'reviewAnomali'])->name('analitik.anomali.review');
@@ -54,6 +55,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('literasi-data')->group(function () {
         Route::get('/', [LiterasiDataController::class, 'index'])->name('literasi-data.index');
+        Route::get('/cari', [LiterasiDataController::class, 'search'])->name('literasi-data.search');
         Route::get('/{category}', [LiterasiDataController::class, 'category'])->name('literasi-data.category');
         Route::get('/{category}/{concept}', [LiterasiDataController::class, 'show'])->name('literasi-data.show');
     });

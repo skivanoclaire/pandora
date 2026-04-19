@@ -85,7 +85,13 @@
                                 <span class="text-pandora-muted">-</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2.5 text-center {{ $t['tanpa_keterangan'] > 0 ? 'text-pandora-danger font-medium' : 'text-pandora-muted text-xs' }}">{{ $t['tanpa_keterangan'] ?: '-' }}</td>
+                        <td class="px-4 py-2.5 text-center text-xs">
+                            @if($t['tanpa_keterangan'] > 0)
+                                <a href="{{ route('analitik.tren.tanpa-keterangan', $t['tanggal']) }}" class="text-pandora-danger font-medium hover:underline">{{ $t['tanpa_keterangan'] }}</a>
+                            @else
+                                <span class="text-pandora-muted">-</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-2.5 text-center">
                             <span class="px-2 py-0.5 rounded text-xs font-medium {{ $t['persen_hadir'] >= 80 ? 'bg-pandora-success/20 text-pandora-success' : ($t['persen_hadir'] >= 60 ? 'bg-pandora-gold/20 text-pandora-gold' : 'bg-pandora-danger/20 text-pandora-danger') }}">{{ $t['persen_hadir'] }}%</span>
                         </td>

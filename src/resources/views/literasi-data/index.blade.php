@@ -3,9 +3,20 @@
 @section('title', 'Literasi Data')
 
 @section('content')
-<div class="mb-8">
+<div class="mb-6">
     <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Literasi Data</h1>
     <p class="text-pandora-muted text-sm md:text-base">Modul pembelajaran data science terstruktur, dikaitkan langsung dengan data nyata PANDORA.</p>
+</div>
+
+{{-- Search --}}
+<div class="mb-6">
+    <form action="{{ route('literasi-data.search') }}" method="GET">
+        <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-pandora-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" name="q" placeholder="Cari materi... (misal: clustering, regresi, confusion matrix)"
+                   class="w-full bg-pandora-surface border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-pandora-text placeholder-pandora-muted/50 focus:border-pandora-accent focus:outline-none transition-colors">
+        </div>
+    </form>
 </div>
 
 {{-- Jalur Belajar --}}

@@ -272,6 +272,44 @@ class AnalitikController extends Controller
         return view('analitik.tren-dinas', compact('tanggal', 'dinas', 'perInstansi', 'totalDL', 'totalDD'));
     }
 
+    public function trenTanpaKeterangan(string $tanggal)
+    {
+        // Pegawai yang hadir (punya jam_masuk di rekap)
+        $hadirIds = DB::table('sync_present_rekap')
+            ->where('tanggal', $tanggal)
+            ->whereNotNull('jam_masuk')
+            ->pluck('id_pegawai');
+
+        // Pegawai yang punya ijin pada tanggal itu
+        $ijinIds = DB::table('sync_present_ijin')
+            ->whereRaw("? BETWEEN tanggal_mulai AND tanggal_selesai", [$tanggal])
+            ->pluck('id_pegawai')
+            ->unique();
+
+        // Tanpa keterangan = tidak hadir DAN tidak ada ijin
+        $excludeIds = $hadirIds->merge($ijinIds)->unique();
+
+        $pegawai = DB::table('sync_peg_pegawai as p')
+            ->leftJoin('sync_ref_unit as u', 'p.id_unit', '=', 'u.id_unit')
+            ->whereNotIn('p.id_pegawai', $excludeIds)
+            ->select(['p.nama', 'p.nip', 'u.nama_unit'])
+            ->orderBy('u.nama_unit')
+            ->orderBy('p.nama')
+            ->get();
+
+        // Per instansi
+        $perInstansi = DB::table('sync_peg_pegawai as p')
+            ->join('sync_ref_unit as u', 'p.id_unit', '=', 'u.id_unit')
+            ->whereNotIn('p.id_pegawai', $excludeIds)
+            ->selectRaw('u.nama_unit, COUNT(*) as jumlah')
+            ->groupBy('u.nama_unit')
+            ->orderByDesc('jumlah')
+            ->limit(20)
+            ->get();
+
+        return view('analitik.tren-tanpa-keterangan', compact('tanggal', 'pegawai', 'perInstansi'));
+    }
+
     public function trenIjin(string $tanggal, string $kategori)
     {
         $kategoriMap = [

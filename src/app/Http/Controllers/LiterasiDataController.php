@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class LiterasiDataController extends Controller
@@ -59,6 +60,69 @@ class LiterasiDataController extends Controller
         }
 
         return view('literasi-data.index', compact('categories'));
+    }
+
+    /**
+     * GET /literasi-data/cari?q=keyword — pencarian materi.
+     */
+    public function search(Request $request)
+    {
+        $q = strtolower(trim($request->get('q', '')));
+        $results = [];
+
+        if (strlen($q) >= 2) {
+            foreach ($this->categories as $catSlug => $meta) {
+                $catDir = $this->basePath . '/' . $catSlug;
+                $readmePath = $catDir . '/README.md';
+                if (!file_exists($readmePath)) continue;
+
+                // Parse concept list from README
+                $readmeContent = file_get_contents($readmePath);
+                preg_match_all('/^\d+\.\s+\[(.+?)\]\((.+?)\)/m', $readmeContent, $matches, PREG_SET_ORDER);
+
+                foreach ($matches as $match) {
+                    $title = $match[1];
+                    $filename = $match[2];
+                    $slug = str_replace('.md', '', $filename);
+                    $filePath = $catDir . '/' . $filename;
+
+                    if (!file_exists($filePath)) continue;
+
+                    $content = file_get_contents($filePath);
+                    $contentLower = strtolower($content);
+
+                    // Match di title atau content
+                    $titleMatch = str_contains(strtolower($title), $q);
+                    $contentMatch = str_contains($contentLower, $q);
+
+                    if ($titleMatch || $contentMatch) {
+                        // Extract snippet sekitar keyword
+                        $snippet = '';
+                        if ($contentMatch) {
+                            $pos = strpos($contentLower, $q);
+                            $start = max(0, $pos - 60);
+                            $snippet = substr($content, $start, 150);
+                            $snippet = '...' . trim(preg_replace('/\s+/', ' ', $snippet)) . '...';
+                        }
+
+                        $results[] = [
+                            'title' => $title,
+                            'category' => $meta['title'],
+                            'category_slug' => $catSlug,
+                            'slug' => $slug,
+                            'color' => $meta['color'],
+                            'snippet' => $snippet,
+                            'title_match' => $titleMatch,
+                        ];
+                    }
+                }
+            }
+
+            // Sort: title match first, then by category
+            usort($results, fn($a, $b) => $b['title_match'] <=> $a['title_match'] ?: strcmp($a['category'], $b['category']));
+        }
+
+        return view('literasi-data.search', compact('q', 'results'));
     }
 
     /**

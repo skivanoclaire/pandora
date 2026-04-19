@@ -11,5 +11,7 @@ Clustering adalah unsupervised learning untuk mengelompokkan data tanpa label, b
 5. [Calinski-Harabasz Index](05-calinski-harabasz.md)
 6. [Davies-Bouldin Index](06-davies-bouldin.md)
 7. [Silhouette Score](07-silhouette.md)
+8. [DBSCAN](08-dbscan.md)
+9. [Isolation Forest](09-isolation-forest.md)
 
 [← Kembali ke menu utama](../README.md)
