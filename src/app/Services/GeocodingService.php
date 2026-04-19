@@ -9,7 +9,15 @@ use Illuminate\Support\Facades\Log;
 class GeocodingService
 {
     /**
-     * Timestamp request terakhir (rate limit 1 req/detik untuk Nominatim).
+     * Nominatim base URL — self-hosted (tanpa rate limit) dengan fallback ke public.
+     */
+    private function baseUrl(): string
+    {
+        return env('NOMINATIM_URL', 'http://pandora-nominatim:8080');
+    }
+
+    /**
+     * Timestamp request terakhir (rate limit untuk fallback public Nominatim).
      */
     private static float $lastRequestTime = 0;
 
@@ -32,19 +40,23 @@ class GeocodingService
             return $cached;
         }
 
-        // Rate limit: minimal 1.1 detik antar request
-        $now = microtime(true);
-        $elapsed = $now - self::$lastRequestTime;
-        if ($elapsed < 1.1) {
-            usleep((int) ((1.1 - $elapsed) * 1_000_000));
+        // Rate limit hanya untuk public Nominatim (self-hosted tidak perlu)
+        $url = $this->baseUrl();
+        $isSelfHosted = str_contains($url, 'pandora-nominatim');
+
+        if (!$isSelfHosted) {
+            $now = microtime(true);
+            $elapsed = $now - self::$lastRequestTime;
+            if ($elapsed < 1.1) {
+                usleep((int) ((1.1 - $elapsed) * 1_000_000));
+            }
+            self::$lastRequestTime = microtime(true);
         }
 
         try {
-            self::$lastRequestTime = microtime(true);
-
-            $response = Http::timeout(5)
+            $response = Http::timeout($isSelfHosted ? 10 : 5)
                 ->withHeaders(['User-Agent' => 'PANDORA-Kaltara/1.0 (pandora.kaltaraprov.go.id)'])
-                ->get('https://nominatim.openstreetmap.org/reverse', [
+                ->get("{$url}/reverse", [
                     'lat' => $lat,
                     'lon' => $lon,
                     'format' => 'json',
