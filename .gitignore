@@ -43,3 +43,4 @@ src/public/hot
 # Python cache
 __pycache__/
 *.pyc
+docker-compose.yml
