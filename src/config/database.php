@@ -84,6 +84,26 @@ return [
             ]) : [],
         ],
 
+        // Koneksi ke SIMPEG/SIKARA (read-only, MySQL)
+        'simpeg' => [
+            'driver' => 'mysql',
+            'host' => env('SIMPEG_DB_HOST', '127.0.0.1'),
+            'port' => env('SIMPEG_DB_PORT', '3306'),
+            'database' => env('SIMPEG_DB_DATABASE', 'simpegkaltara21'),
+            'username' => env('SIMPEG_DB_USERNAME', 'simpeg_api'),
+            'password' => env('SIMPEG_DB_PASSWORD', ''),
+            'unix_socket' => '',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

@@ -19,20 +19,23 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'nip' => ['required', 'string'],
+        $request->validate([
+            'login' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        $login = $request->input('login');
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'nip';
+
+        if (Auth::attempt([$field => $login, 'password' => $request->password], $request->boolean('remember'))) {
             $request->session()->regenerate();
 
             return redirect()->intended('/dashboard');
         }
 
         return back()->withErrors([
-            'nip' => 'NIP atau password yang Anda masukkan salah.',
-        ])->onlyInput('nip');
+            'login' => 'NIP/Email atau password yang Anda masukkan salah.',
+        ])->onlyInput('login');
     }
 
     public function logout(Request $request)

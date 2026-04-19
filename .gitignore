@@ -39,3 +39,7 @@ docker/volumes/
 
 # Vite dev server
 src/public/hot
+
+# Python cache
+__pycache__/
+*.pyc

@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
+    pdo_mysql \
     pdo_pgsql \
     pgsql \
     zip \

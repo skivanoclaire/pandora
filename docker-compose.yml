@@ -8,6 +8,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./src:/var/www
+      - ./literasi-data:/var/www/literasi-data:ro
     environment:
       - DB_HOST=${DB_HOST:-pandora-db}
       - DB_PORT=${DB_PORT:-5432}
@@ -16,6 +17,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-secret}
       - REDIS_HOST=${REDIS_HOST:-pandora-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
+      - ANCHOR_SERVICE_URL=http://pandora-anchor:8700
     depends_on:
       pandora-db:
         condition: service_healthy
@@ -42,6 +44,31 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-secret}
       - REDIS_HOST=${REDIS_HOST:-pandora-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
+    depends_on:
+      - pandora-app
+    networks:
+      - pandora-network
+
+  pandora-scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: pandora-scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan schedule:work
+    volumes:
+      - ./src:/var/www
+      - ./literasi-data:/var/www/literasi-data:ro
+    environment:
+      - DB_HOST=${DB_HOST:-pandora-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_DATABASE=${DB_DATABASE:-pandora}
+      - DB_USERNAME=${DB_USERNAME:-pandora}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - REDIS_HOST=${REDIS_HOST:-pandora-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - ANCHOR_SERVICE_URL=http://pandora-anchor:8700
     depends_on:
       - pandora-app
     networks:
@@ -128,6 +155,29 @@ services:
         condition: service_healthy
     networks:
       - pandora-network
+
+  pandora-anchor:
+    build:
+      context: ./anchor-service
+      dockerfile: Dockerfile
+    container_name: pandora-anchor
+    restart: unless-stopped
+    networks:
+      - pandora-network
+    expose:
+      - "8700"
+    environment:
+      - TZ=Asia/Makassar
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8700/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   pandora-db-data:

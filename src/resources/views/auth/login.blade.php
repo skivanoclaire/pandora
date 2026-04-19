@@ -74,9 +74,7 @@
 
             {{-- Brand Section --}}
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-pandora-accent to-pandora-primary mb-4 shadow-lg shadow-pandora-accent/20">
-                    <span class="text-2xl font-extrabold text-white">P</span>
-                </div>
+                <img src="/logokaltara.png" alt="Logo Kaltara" class="w-14 h-14 object-contain mx-auto mb-4">
                 <h1 class="text-2xl font-bold tracking-wide text-pandora-text">PANDORA</h1>
                 <p class="text-sm text-pandora-muted mt-1">Portal Analitik Data Kehadiran ASN</p>
             </div>
@@ -113,15 +111,15 @@
                     <form method="POST" action="{{ route('login') }}" class="space-y-5">
                         @csrf
 
-                        {{-- NIP Field --}}
+                        {{-- NIP / Email Field --}}
                         <div>
-                            <label for="nip" class="block text-sm font-medium text-pandora-text mb-1.5">NIP / Username</label>
+                            <label for="login" class="block text-sm font-medium text-pandora-text mb-1.5">NIP / Email</label>
                             <input
                                 type="text"
-                                id="nip"
-                                name="nip"
-                                value="{{ old('nip') }}"
-                                placeholder="Masukkan NIP atau username"
+                                id="login"
+                                name="login"
+                                value="{{ old('login') }}"
+                                placeholder="Masukkan NIP atau email"
                                 required
                                 autofocus
                                 class="w-full px-4 py-2.5 rounded-lg bg-pandora-dark border border-white/10 text-pandora-text placeholder-pandora-muted/50 focus:border-pandora-accent focus:ring-1 focus:ring-pandora-accent/50 outline-none transition-colors duration-200 text-sm"
@@ -171,9 +169,12 @@
             </div>
 
             {{-- Footer --}}
-            <p class="text-center text-xs text-pandora-muted mt-8">
-                DKISP Prov. Kalimantan Utara &copy; {{ date('Y') }}
-            </p>
+            <div class="text-center mt-8 space-y-1">
+                <p class="text-xs text-pandora-muted/60">&copy; 2026 DKISP Kalimantan Utara - Bidang Aplikasi Informatika. All rights reserved.</p>
+                <p class="text-xs text-pandora-muted/50">
+                    Dikembangkan oleh : <a href="https://www.linkedin.com/in/noclaire/" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/70 hover:text-pandora-accent transition-colors">Bayu Adi H.</a>
+                </p>
+            </div>
 
         </div>
     </div>

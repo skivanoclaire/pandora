@@ -45,9 +45,7 @@
         {{-- Sidebar Header --}}
         <div class="flex items-center justify-between h-16 px-5 flex-shrink-0">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pandora-accent to-pandora-primary flex items-center justify-center font-bold text-white">
-                    P
-                </div>
+                <img src="/logokaltara.png" alt="Logo Kaltara" class="w-10 h-10 object-contain">
                 <span class="font-bold tracking-wider text-pandora-text">PANDORA</span>
             </div>
             <button @click="sidebarOpen = false" class="lg:hidden text-pandora-muted hover:text-pandora-text">
@@ -198,6 +196,26 @@
                 <span>Sinkronisasi</span>
             </a>
 
+            {{-- Literasi Data --}}
+            <a href="/literasi-data"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                      {{ request()->is('literasi-data*') ? 'bg-pandora-accent/10 border-l-2 border-pandora-accent text-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+                <span>Literasi Data</span>
+            </a>
+
+            {{-- Integritas --}}
+            <a href="/integritas"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                      {{ request()->is('integritas*') ? 'bg-pandora-accent/10 border-l-2 border-pandora-accent text-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                <span>Integritas</span>
+            </a>
+
             {{-- Pengaturan (admin only) --}}
             @if(auth()->user()->role === 'admin')
             <a href="/pengaturan"
@@ -270,8 +288,40 @@
     {{-- Main Content --}}
     <main class="lg:ml-[260px] pt-16 min-h-screen bg-pandora-dark">
         <div class="p-4 md:p-6 lg:p-8">
+            {{-- Global Flash Messages --}}
+            @if(session('success'))
+                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-transition
+                     class="mb-4 px-4 py-3 rounded-lg bg-pandora-success/10 border border-pandora-success/20 text-pandora-success text-sm flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        {{ session('success') }}
+                    </div>
+                    <button @click="show = false" class="text-pandora-success/60 hover:text-pandora-success"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
+            @endif
+            @if(session('error'))
+                <div x-data="{ show: true }" x-show="show" x-transition
+                     class="mb-4 px-4 py-3 rounded-lg bg-pandora-danger/10 border border-pandora-danger/20 text-pandora-danger text-sm flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ session('error') }}
+                    </div>
+                    <button @click="show = false" class="text-pandora-danger/60 hover:text-pandora-danger"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                </div>
+            @endif
+
             @yield('content')
         </div>
+
+        {{-- Footer --}}
+        <footer class="px-4 md:px-6 lg:px-8 pb-6 pt-4">
+            <div class="border-t border-pandora-primary/20 pt-4 text-center">
+                <p class="text-xs text-pandora-muted/50">&copy; 2026 DKISP Kalimantan Utara - Bidang Aplikasi Informatika. All rights reserved.</p>
+                <p class="text-xs text-pandora-muted/40 mt-1">
+                    Dikembangkan oleh : <a href="https://www.linkedin.com/in/noclaire/" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/60 hover:text-pandora-accent transition-colors">Bayu Adi H.</a>
+                </p>
+            </div>
+        </footer>
     </main>
 
     @stack('scripts')

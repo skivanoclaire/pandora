@@ -166,9 +166,7 @@
             <div class="flex items-center justify-between h-16 lg:h-20">
                 {{-- Logo --}}
                 <a href="/" class="flex items-center gap-3 group">
-                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-pandora-accent to-pandora-primary flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-pandora-accent/20 group-hover:shadow-pandora-accent/40 transition-shadow">
-                        P
-                    </div>
+                    <img src="/logokaltara.png" alt="Logo Kaltara" class="w-9 h-9 object-contain">
                     <span class="text-white font-bold text-lg tracking-[2px]">PANDORA</span>
                 </a>
 
@@ -233,7 +231,7 @@
 
             {{-- Subtitle --}}
             <p class="text-pandora-muted text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-                Pantau, analisis, dan optimalkan kehadiran 6.000+ ASN secara real-time dengan kecerdasan data dan visualisasi interaktif.
+                Pantau, analisis, dan optimalkan kehadiran 6.475 ASN secara real-time dengan kecerdasan data dan visualisasi interaktif.
             </p>
 
             {{-- Buttons --}}
@@ -259,11 +257,11 @@
     <section class="relative -mt-16 z-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <div id="stats-bar" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 p-6 sm:p-8 rounded-2xl bg-pandora-surface/80 backdrop-blur-xl border border-pandora-primary/20 shadow-2xl shadow-black/20">
             <div class="text-center">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white counter-value" data-target="6000" data-suffix="+">0</div>
+                <div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white counter-value" data-target="6475" data-suffix="">0</div>
                 <div class="text-pandora-muted text-xs sm:text-sm mt-1">ASN Terpantau</div>
             </div>
             <div class="text-center">
-                <div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white counter-value" data-target="139" data-suffix="">0</div>
+                <div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white counter-value" data-target="148" data-suffix="">0</div>
                 <div class="text-pandora-muted text-xs sm:text-sm mt-1">Instansi</div>
             </div>
             <div class="text-center">
@@ -475,9 +473,7 @@
             <div class="flex flex-col items-center text-center gap-4">
                 {{-- Logo --}}
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-pandora-accent to-pandora-primary flex items-center justify-center text-white font-bold text-lg">
-                        P
-                    </div>
+                    <img src="/logokaltara.png" alt="Logo Kaltara" class="w-9 h-9 object-contain">
                     <span class="text-white font-bold text-lg tracking-[2px]">PANDORA</span>
                 </div>
                 <p class="text-pandora-muted text-sm">Portal Analitik Data Kehadiran ASN</p>
@@ -485,7 +481,17 @@
                     <p>Dinas Komunikasi, Informatika, Statistik, dan Persandian</p>
                     <p>Pemerintah Provinsi Kalimantan Utara</p>
                 </div>
-                <p class="text-pandora-muted/60 text-xs mt-2">&copy; 2026 PANDORA. Hak cipta dilindungi.</p>
+
+                <div class="border-t border-pandora-primary/20 mt-4 pt-4 w-full max-w-md">
+                    <p class="text-pandora-muted/60 text-xs">&copy; 2026 DKISP Kalimantan Utara - Bidang Aplikasi Informatika. All rights reserved.</p>
+                    <p class="text-pandora-muted/50 text-xs mt-2">
+                        Dikembangkan oleh : <a href="https://www.linkedin.com/in/noclaire/" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/70 hover:text-pandora-accent transition-colors">Bayu Adi H.</a>
+                        <span class="mx-1.5">·</span>
+                        <a href="https://github.com/skivanoclaire" target="_blank" rel="noopener noreferrer" class="text-pandora-muted/50 hover:text-pandora-accent transition-colors">
+                            <svg class="w-3.5 h-3.5 inline-block -mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                        </a>
+                    </p>
+                </div>
             </div>
         </div>
     </footer>
