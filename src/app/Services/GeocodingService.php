@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Log;
 class GeocodingService
 {
     /**
+     * Timestamp request terakhir (rate limit 1 req/detik untuk Nominatim).
+     */
+    private static float $lastRequestTime = 0;
+
+    /**
      * Reverse geocode koordinat ke nama lokasi via Nominatim (OpenStreetMap).
      * Gratis, tanpa API key. Rate limit: 1 req/detik (cache mengurangi hit).
      *
@@ -21,45 +26,73 @@ class GeocodingService
         // Round ke 4 desimal (~11m precision) untuk cache key yang efektif
         $cacheKey = 'geocode:' . round($lat, 4) . ',' . round($lon, 4);
 
-        return Cache::remember($cacheKey, now()->addDays(30), function () use ($lat, $lon, $default) {
-            try {
-                $response = Http::timeout(5)
-                    ->withHeaders(['User-Agent' => 'PANDORA-Kaltara/1.0 (pandora.kaltaraprov.go.id)'])
-                    ->get('https://nominatim.openstreetmap.org/reverse', [
-                        'lat' => $lat,
-                        'lon' => $lon,
-                        'format' => 'json',
-                        'zoom' => 10, // level kota/kabupaten
-                        'addressdetails' => 1,
-                    ]);
+        // Cek cache dulu — hanya return jika hasilnya valid (bukan null yang ter-cache dari error)
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null && $cached['display'] !== null) {
+            return $cached;
+        }
 
-                if ($response->failed()) {
-                    return $default;
-                }
+        // Rate limit: minimal 1.1 detik antar request
+        $now = microtime(true);
+        $elapsed = $now - self::$lastRequestTime;
+        if ($elapsed < 1.1) {
+            usleep((int) ((1.1 - $elapsed) * 1_000_000));
+        }
 
-                $data = $response->json();
-                $addr = $data['address'] ?? [];
+        try {
+            self::$lastRequestTime = microtime(true);
 
-                $kota = $addr['city'] ?? $addr['town'] ?? $addr['county']
-                    ?? $addr['municipality'] ?? $addr['city_district'] ?? null;
-                $provinsi = $addr['state'] ?? null;
-                $negara = $addr['country'] ?? null;
+            $response = Http::timeout(5)
+                ->withHeaders(['User-Agent' => 'PANDORA-Kaltara/1.0 (pandora.kaltaraprov.go.id)'])
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'lat' => $lat,
+                    'lon' => $lon,
+                    'format' => 'json',
+                    'zoom' => 10,
+                    'addressdetails' => 1,
+                ]);
 
-                // Build display string
-                $parts = array_filter([$kota, $provinsi]);
-                $display = !empty($parts) ? implode(', ', $parts) : ($data['display_name'] ?? null);
-
-                return [
-                    'kota' => $kota,
-                    'provinsi' => $provinsi,
-                    'negara' => $negara,
-                    'display' => $display,
-                ];
-            } catch (\Throwable $e) {
-                Log::warning("Reverse geocode failed: {$e->getMessage()}");
+            if ($response->failed()) {
+                // Jangan cache hasil gagal (rate limit, server error)
+                Log::warning("Geocode HTTP {$response->status()} for {$lat},{$lon}");
                 return $default;
             }
-        });
+
+            $data = $response->json();
+
+            if (isset($data['error'])) {
+                // Nominatim error (misal: "Unable to geocode") — jangan cache
+                return $default;
+            }
+
+            $addr = $data['address'] ?? [];
+
+            $kota = $addr['city'] ?? $addr['town'] ?? $addr['county']
+                ?? $addr['municipality'] ?? $addr['city_district'] ?? null;
+            $provinsi = $addr['state'] ?? null;
+            $negara = $addr['country'] ?? null;
+
+            // Build display string
+            $parts = array_filter([$kota, $provinsi]);
+            $display = !empty($parts) ? implode(', ', $parts) : ($data['display_name'] ?? null);
+
+            $result = [
+                'kota' => $kota,
+                'provinsi' => $provinsi,
+                'negara' => $negara,
+                'display' => $display,
+            ];
+
+            // Hanya cache jika hasilnya valid
+            if ($display !== null) {
+                Cache::put($cacheKey, $result, now()->addDays(30));
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            Log::warning("Reverse geocode failed: {$e->getMessage()}");
+            return $default;
+        }
     }
 
     /**
