@@ -57,18 +57,21 @@ echo ""
 echo "=== Backup selesai: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz ==="
 echo "  Size: $(du -sh ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz | cut -f1)"
 
-# 7. Upload ke Google Drive (jika rclone sudah dikonfigurasi)
-if command -v rclone &> /dev/null; then
+# 7. Upload ke Google Drive
+RCLONE="${HOME}/bin/rclone"
+if [ -x "${RCLONE}" ]; then
     echo ""
     echo "[Upload] Uploading ke Google Drive..."
-    rclone copy "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" gdrive:PANDORA-Backups/ --progress
-    echo "  Upload selesai!"
+    ${RCLONE} copy "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" gdrive:PANDORA-Backups/
+    echo "  Upload selesai: gdrive:PANDORA-Backups/${BACKUP_NAME}.tar.gz"
+
+    # Cleanup remote: keep last 7 backups di Google Drive juga
+    ${RCLONE} lsf gdrive:PANDORA-Backups/ --files-only | sort -r | tail -n +8 | while read f; do
+        ${RCLONE} deletefile "gdrive:PANDORA-Backups/${f}" 2>/dev/null
+        echo "  Remote deleted: ${f}"
+    done
 else
-    echo ""
-    echo "[Info] rclone belum terinstall. Untuk upload ke Google Drive:"
-    echo "  1. Install: curl https://rclone.org/install.sh | sudo bash"
-    echo "  2. Setup:   rclone config  (pilih Google Drive)"
-    echo "  3. Upload:  rclone copy ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz gdrive:PANDORA-Backups/"
+    echo "[Skip] rclone not found at ${RCLONE}"
 fi
 
 # 8. Cleanup: keep last 7 backups
