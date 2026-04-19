@@ -125,11 +125,44 @@
 </div>
 
 <!-- Tab: Zona PANDORA -->
-@if($zonaPandora->count() > 0)
-<div class="bg-pandora-surface rounded-xl border border-white/5 overflow-hidden">
-    <div class="px-5 py-3 border-b border-white/5">
+<div class="bg-pandora-surface rounded-xl border border-white/5 overflow-hidden" x-data="{ showAdd: false }">
+    <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-pandora-text">Zona Geofence PANDORA (Aturan Hari/Jam)</h2>
+        <button @click="showAdd = true" class="px-3 py-1.5 bg-pandora-accent text-white text-xs rounded-lg hover:bg-pandora-accent-light transition-colors">+ Tambah Zona</button>
     </div>
+
+    <!-- Modal Tambah Zona -->
+    <div x-show="showAdd" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showAdd = false" style="display: none;">
+        <div class="bg-pandora-surface rounded-xl border border-white/10 p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-pandora-text mb-4">Tambah Zona Geofence</h3>
+            <form method="POST" action="{{ route('master.geofence.store-zone') }}" class="space-y-3">
+                @csrf
+                <div>
+                    <label class="block text-xs text-pandora-muted mb-1">Nama Zona</label>
+                    <input type="text" name="nama_zona" required class="w-full bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-pandora-muted mb-1">Latitude</label>
+                        <input type="number" step="any" name="lat_center" required class="w-full bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-pandora-muted mb-1">Longitude</label>
+                        <input type="number" step="any" name="long_center" required class="w-full bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-pandora-muted mb-1">Radius (meter)</label>
+                    <input type="number" name="radius_meter" value="50" min="10" max="10000" required class="w-full bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-pandora-accent text-white text-sm rounded-lg hover:bg-pandora-accent-light transition-colors">Simpan</button>
+                    <button type="button" @click="showAdd = false" class="px-4 py-2 bg-pandora-dark text-pandora-muted text-sm rounded-lg hover:bg-pandora-surface-light transition-colors">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -138,10 +171,11 @@
                     <th class="px-4 py-3 text-center">Radius</th>
                     <th class="px-4 py-3 text-center">Aturan</th>
                     <th class="px-4 py-3 text-center">Status</th>
+                    <th class="px-4 py-3 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-white/5">
-                @foreach($zonaPandora as $z)
+                @forelse($zonaPandora as $z)
                     <tr class="hover:bg-pandora-dark/30 transition-colors">
                         <td class="px-4 py-3 text-pandora-text">{{ $z->nama_zona }}</td>
                         <td class="px-4 py-3 text-center text-pandora-muted">{{ $z->radius_meter ? $z->radius_meter.'m' : '-' }}</td>
@@ -151,13 +185,20 @@
                             @else <span class="w-2 h-2 rounded-full bg-pandora-danger inline-block"></span>
                             @endif
                         </td>
+                        <td class="px-4 py-3 text-center">
+                            <form method="POST" action="{{ route('master.geofence.destroy-zone', $z->id) }}" onsubmit="return confirm('Hapus zona ini?')">
+                                @csrf @method('DELETE')
+                                <button class="text-pandora-danger/60 hover:text-pandora-danger text-xs">Hapus</button>
+                            </form>
+                        </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-pandora-muted">Belum ada zona PANDORA</td></tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 </div>
-@endif
 @endsection
 
 @push('scripts')

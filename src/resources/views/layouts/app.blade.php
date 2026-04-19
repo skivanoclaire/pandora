@@ -106,6 +106,11 @@
                               {{ request()->is('master/geofence*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
                         Zona Geofence
                     </a>
+                    <a href="/master/whitelist"
+                       class="block pl-12 pr-3 py-2 rounded-lg text-sm transition-colors
+                              {{ request()->is('master/whitelist*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
+                        Whitelist Pegawai
+                    </a>
                 </div>
             </div>
 

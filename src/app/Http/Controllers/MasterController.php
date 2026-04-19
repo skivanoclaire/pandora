@@ -101,4 +101,100 @@ class MasterController extends Controller
 
         return view('master.geofence', compact('lokasiSikara', 'zonaPandora', 'totalLokasi', 'totalAktif', 'unitPerLokasi'));
     }
+
+    public function storeZone(Request $request)
+    {
+        $request->validate([
+            'nama_zona' => 'required|string|max:255',
+            'lat_center' => 'required|numeric',
+            'long_center' => 'required|numeric',
+            'radius_meter' => 'required|integer|min:10|max:10000',
+        ]);
+
+        $zone = DB::table('geofence_zones')->insertGetId([
+            'nama_zona' => $request->nama_zona,
+            'lat_center' => $request->lat_center,
+            'long_center' => $request->long_center,
+            'radius_meter' => $request->radius_meter,
+            'aktif' => true,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Update PostGIS polygon
+        DB::statement("UPDATE geofence_zones SET polygon = ST_Buffer(
+            ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?
+        )::geometry WHERE id = ?", [$request->long_center, $request->lat_center, $request->radius_meter, $zone]);
+
+        \App\Models\Integrity\AuditTrail::catat(auth()->id(), 'tambah_geofence', 'geofence_zones', $zone, ['nama' => $request->nama_zona]);
+
+        return back()->with('success', "Zona '{$request->nama_zona}' berhasil ditambahkan.");
+    }
+
+    public function destroyZone(int $id)
+    {
+        $zone = DB::table('geofence_zones')->where('id', $id)->first();
+        abort_unless($zone, 404);
+
+        DB::table('geofence_rules')->where('geofence_zone_id', $id)->delete();
+        DB::table('geofence_zones')->where('id', $id)->delete();
+
+        \App\Models\Integrity\AuditTrail::catat(auth()->id(), 'hapus_geofence', 'geofence_zones', $id, ['nama' => $zone->nama_zona]);
+
+        return back()->with('success', "Zona '{$zone->nama_zona}' berhasil dihapus.");
+    }
+
+    public function whitelist()
+    {
+        $whitelists = DB::table('whitelist_pegawai as w')
+            ->join('sync_peg_pegawai as p', 'w.id_pegawai', '=', 'p.id_pegawai')
+            ->leftJoin('sync_ref_unit as u', 'p.id_unit', '=', 'u.id_unit')
+            ->select(['w.*', 'p.nama', 'p.nip', 'u.nama_unit'])
+            ->orderByDesc('w.created_at')
+            ->paginate(30);
+
+        $pegawaiList = DB::table('sync_peg_pegawai')->orderBy('nama')->get(['id_pegawai', 'nama', 'nip']);
+
+        return view('master.whitelist', compact('whitelists', 'pegawaiList'));
+    }
+
+    public function storeWhitelist(Request $request)
+    {
+        $request->validate([
+            'id_pegawai' => 'required|integer',
+            'jenis_whitelist' => 'required|string|max:100',
+            'alasan' => 'required|string',
+            'berlaku_mulai' => 'required|date',
+            'berlaku_sampai' => 'nullable|date|after_or_equal:berlaku_mulai',
+        ]);
+
+        $id = DB::table('whitelist_pegawai')->insertGetId([
+            'id_pegawai' => $request->id_pegawai,
+            'jenis_whitelist' => $request->jenis_whitelist,
+            'alasan' => $request->alasan,
+            'berlaku_mulai' => $request->berlaku_mulai,
+            'berlaku_sampai' => $request->berlaku_sampai,
+            'created_by' => auth()->id(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \App\Models\Integrity\AuditTrail::catat(auth()->id(), 'tambah_whitelist', 'whitelist_pegawai', $id,
+            ['id_pegawai' => $request->id_pegawai, 'jenis' => $request->jenis_whitelist]);
+
+        return back()->with('success', 'Whitelist berhasil ditambahkan.');
+    }
+
+    public function destroyWhitelist(int $id)
+    {
+        $wl = DB::table('whitelist_pegawai')->where('id', $id)->first();
+        abort_unless($wl, 404);
+
+        DB::table('whitelist_pegawai')->where('id', $id)->delete();
+
+        \App\Models\Integrity\AuditTrail::catat(auth()->id(), 'hapus_whitelist', 'whitelist_pegawai', $id);
+
+        return back()->with('success', 'Whitelist berhasil dihapus.');
+    }
 }

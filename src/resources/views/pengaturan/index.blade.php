@@ -72,18 +72,18 @@
             </div>
         </div>
     </a>
-    <div class="bg-pandora-surface rounded-xl p-5 border border-white/5">
+    <a href="{{ route('pengaturan.audit-trail') }}" class="bg-pandora-surface rounded-xl p-5 border border-white/5 hover:border-pandora-success/30 transition-colors group">
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-pandora-success/10 flex items-center justify-center">
+            <div class="w-12 h-12 rounded-lg bg-pandora-success/10 flex items-center justify-center group-hover:bg-pandora-success/20 transition-colors">
                 <svg class="w-6 h-6 text-pandora-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
             </div>
             <div>
-                <h3 class="text-sm font-semibold text-white">Audit Trail</h3>
-                <p class="text-xs text-pandora-muted mt-1">{{ number_format($auditCount) }} entri tercatat. Lihat di halaman <a href="/integritas" class="text-pandora-accent hover:underline">Integritas</a>.</p>
+                <h3 class="text-sm font-semibold text-white group-hover:text-pandora-success transition-colors">Audit Trail</h3>
+                <p class="text-xs text-pandora-muted mt-1">{{ number_format($auditCount) }} entri tercatat. Klik untuk melihat riwayat aktivitas sistem.</p>
             </div>
         </div>
-    </div>
+    </a>
 </div>
 @endsection

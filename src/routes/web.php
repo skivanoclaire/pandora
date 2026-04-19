@@ -29,6 +29,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/master/instansi', [MasterController::class, 'instansi']);
     Route::get('/master/pegawai', [MasterController::class, 'pegawai']);
     Route::get('/master/geofence', [MasterController::class, 'geofence']);
+    Route::post('/master/geofence/zones', [MasterController::class, 'storeZone'])->name('master.geofence.store-zone');
+    Route::delete('/master/geofence/zones/{id}', [MasterController::class, 'destroyZone'])->name('master.geofence.destroy-zone');
+
+    Route::get('/master/whitelist', [MasterController::class, 'whitelist'])->name('master.whitelist');
+    Route::post('/master/whitelist', [MasterController::class, 'storeWhitelist'])->name('master.whitelist.store');
+    Route::delete('/master/whitelist/{id}', [MasterController::class, 'destroyWhitelist'])->name('master.whitelist.destroy');
 
     Route::get('/kehadiran/rekap', [KehadiranController::class, 'rekap']);
     Route::get('/kehadiran/log', [KehadiranController::class, 'log']);
@@ -39,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/analitik/tren/{tanggal}/ijin/{kategori}', [AnalitikController::class, 'trenIjin'])->name('analitik.tren.ijin');
     Route::get('/analitik/tren/{tanggal}/tanpa-keterangan', [AnalitikController::class, 'trenTanpaKeterangan'])->name('analitik.tren.tanpa-keterangan');
     Route::get('/analitik/anomali', [AnalitikController::class, 'anomali']);
+    Route::get('/analitik/anomali/export-pdf', [AnalitikController::class, 'exportAnomaliPdf'])->name('analitik.anomali.export');
     Route::get('/analitik/anomali/{id}', [AnalitikController::class, 'detailAnomali'])->name('analitik.anomali.detail');
     Route::patch('/analitik/anomali/{id}/review', [AnalitikController::class, 'reviewAnomali'])->name('analitik.anomali.review');
     Route::get('/analitik/clustering', [AnalitikController::class, 'clustering']);
@@ -47,6 +54,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:admin')->prefix('pengaturan')->group(function () {
         Route::get('/', [PengaturanController::class, 'index'])->name('pengaturan.index');
+        Route::get('/audit-trail', [PengaturanController::class, 'auditTrail'])->name('pengaturan.audit-trail');
         Route::get('/users', [UserController::class, 'index'])->name('pengaturan.users');
         Route::post('/users', [UserController::class, 'store'])->name('pengaturan.users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('pengaturan.users.update');

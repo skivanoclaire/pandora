@@ -769,6 +769,42 @@ class AnalitikController extends Controller
         return back()->with('success', 'Anomali berhasil direview.');
     }
 
+    public function exportAnomaliPdf(Request $request)
+    {
+        $tingkat = $request->get('tingkat');
+        $jenis = $request->get('jenis');
+        $dari = $request->get('dari', Carbon::today()->subDays(30)->toDateString());
+        $sampai = $request->get('sampai', Carbon::today()->toDateString());
+
+        $query = DB::table('anomaly_flags as a')
+            ->join('sync_peg_pegawai as p', 'a.id_pegawai', '=', 'p.id_pegawai')
+            ->leftJoin('sync_ref_unit as u', 'p.id_unit', '=', 'u.id_unit')
+            ->whereBetween('a.tanggal', [$dari, $sampai]);
+
+        if ($tingkat) $query->where('a.tingkat', $tingkat);
+        if ($jenis) $query->where('a.jenis_anomali', $jenis);
+
+        $anomalies = $query
+            ->orderByDesc('a.confidence')
+            ->select(['a.id', 'a.tanggal', 'a.jenis_anomali', 'a.tingkat', 'a.confidence',
+                      'a.metode_deteksi', 'a.status_review', 'p.nama', 'p.nip', 'u.nama_unit'])
+            ->limit(500)
+            ->get();
+
+        $summary = [
+            'dari' => $dari,
+            'sampai' => $sampai,
+            'total' => $anomalies->count(),
+            'tingkat1' => $anomalies->where('tingkat', 1)->count(),
+            'tingkat3' => $anomalies->where('tingkat', 3)->count(),
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.anomali-pdf', compact('anomalies', 'summary'));
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->download("laporan-anomali-{$dari}-{$sampai}.pdf");
+    }
+
     public function clustering(Request $request, \App\Services\GeocodingService $geocoding)
     {
         $tanggalAwal = $request->get('dari', Carbon::today()->subDays(30)->toDateString());
