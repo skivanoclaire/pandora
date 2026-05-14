@@ -157,7 +157,7 @@ rclone copy /home/pandora/backups/pandora_backup_*.tar.gz gdrive:PANDORA-Backups
 
 ## Lisensi
 
-Proyek internal Pemerintah Provinsi Kalimantan Utara — DKISP (Dinas Komunikasi, Informatika, Statistik, dan Persandian). Dikembangkan dalam kerangka program SKALA (DFAT Australia).
+Proyek internal Pemerintah Provinsi Kalimantan Utara — DKISP (Dinas Komunikasi, Informatika, Statistik, dan Persandian).
 
 ---
 
