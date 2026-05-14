@@ -1,7 +1,8 @@
 """SQLAlchemy models untuk tabel staging (read-only dari sisi Python)."""
 
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Date, DateTime, Integer, Numeric, String, Text, Time,
+    BigInteger, Boolean, Column, Date, DateTime, Integer, Numeric, SmallInteger,
+    String, Text, Time,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -29,6 +30,7 @@ class SyncRefUnit(Base):
     parent_id = Column(BigInteger)
     kode_unit = Column(String(50))
     level = Column(Integer)
+    operasi_24_jam = Column(Boolean, default=False)
 
 
 class SyncPresentRekap(Base):
@@ -39,28 +41,28 @@ class SyncPresentRekap(Base):
     id_pegawai = Column(BigInteger, index=True)
     tanggal = Column(Date, index=True)
     nip = Column(String(18))
-    lat_berangkat = Column(Numeric(10, 7))
-    long_berangkat = Column(Numeric(10, 7))
+    lat_berangkat = Column(Numeric(17, 10))
+    long_berangkat = Column(Numeric(17, 10))
     nama_lokasi_berangkat = Column(String(255))
     foto_berangkat = Column(String(500))
-    lat_pulang = Column(Numeric(10, 7))
-    long_pulang = Column(Numeric(10, 7))
+    lat_pulang = Column(Numeric(17, 10))
+    long_pulang = Column(Numeric(17, 10))
     nama_lokasi_pulang = Column(String(255))
     foto_pulang = Column(String(500))
     jam_masuk = Column(Time)
     jam_pulang = Column(Time)
-    tw = Column(Boolean, default=False)
-    mkttw = Column(Boolean, default=False)
-    pktw = Column(Boolean, default=False)
-    plc = Column(Boolean, default=False)
-    tk = Column(Boolean, default=False)
-    ta = Column(Boolean, default=False)
-    i = Column(Boolean, default=False)
-    s = Column(Boolean, default=False)
-    c = Column(Boolean, default=False)
-    dl = Column(Boolean, default=False)
-    dsp = Column(Boolean, default=False)
-    ll = Column(Boolean, default=False)
+    tw = Column(SmallInteger, default=0)
+    mkttw = Column(SmallInteger, default=0)
+    pktw = Column(SmallInteger, default=0)
+    plc = Column(SmallInteger, default=0)
+    tk = Column(SmallInteger, default=0)
+    ta = Column(SmallInteger, default=0)
+    i = Column(SmallInteger, default=0)
+    s = Column(SmallInteger, default=0)
+    c = Column(SmallInteger, default=0)
+    dl = Column(SmallInteger, default=0)
+    dsp = Column(SmallInteger, default=0)
+    ll = Column(SmallInteger, default=0)
     d = Column(String(10))
     jenis_presensi = Column(String(50))
     cdate = Column(DateTime)
@@ -127,8 +129,8 @@ class SyncRefLokasiUnit(Base):
     id = Column(BigInteger, primary_key=True)
     id_lokasi = Column(BigInteger, unique=True)
     nama_lokasi = Column(String(255))
-    latitude = Column(Numeric(10, 7))
-    longitude = Column(Numeric(10, 7))
+    latitude = Column(Numeric(17, 10))
+    longitude = Column(Numeric(17, 10))
     radius = Column(Integer)
     aktif = Column(Boolean, default=True)
 
@@ -157,8 +159,8 @@ class SyncPresentMapsLogs(Base):
     id = Column(BigInteger, primary_key=True)
     id_maps_log = Column(BigInteger, unique=True)
     id_pegawai = Column(BigInteger, index=True)
-    latitude = Column(Numeric(10, 7))
-    longitude = Column(Numeric(10, 7))
+    latitude = Column(Numeric(17, 10))
+    longitude = Column(Numeric(17, 10))
     jam = Column(Time)
     jamke = Column(Integer)
     id_maps = Column(BigInteger)
@@ -177,3 +179,33 @@ class SyncPresentIjin(Base):
     jenis_ijin = Column(String(100))
     keterangan = Column(Text)
     cdate = Column(DateTime)
+
+
+class GeofenceZone(Base):
+    __tablename__ = "geofence_zones"
+
+    id = Column(BigInteger, primary_key=True)
+    nama_zona = Column(String(255))
+    lat_center = Column(Numeric(17, 10))
+    long_center = Column(Numeric(17, 10))
+    radius_meter = Column(Integer)
+    aktif = Column(Boolean, default=True)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
+
+
+class GeofenceRule(Base):
+    __tablename__ = "geofence_rules"
+
+    id = Column(BigInteger, primary_key=True)
+    geofence_zone_id = Column(BigInteger, index=True)
+    hari_of_week = Column(SmallInteger)  # 0=Minggu, 1=Senin, ..., 6=Sabtu
+    jam_mulai = Column(Time)
+    jam_selesai = Column(Time)
+    jenis_kegiatan = Column(String(100))
+    berlaku_mulai = Column(Date)
+    berlaku_sampai = Column(Date)
+    unit_kerja_ids = Column(JSONB)
+    catatan = Column(Text)
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnalitikController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EvaluasiController;
 use App\Http\Controllers\DashboardPimpinanController;
 use App\Http\Controllers\KehadiranController;
 use App\Http\Controllers\MasterController;
@@ -11,9 +12,14 @@ use App\Http\Controllers\LiterasiDataController;
 use App\Http\Controllers\PengaturanController;
 use App\Http\Controllers\SinkronisasiController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => view('landing'));
+Route::get('/', function () {
+    $totalAsn = Cache::remember('landing.total_asn', 300, fn () => DB::table('sync_peg_pegawai')->count());
+    return view('landing', ['totalAsn' => $totalAsn]);
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -37,18 +43,24 @@ Route::middleware('auth')->group(function () {
     Route::delete('/master/whitelist/{id}', [MasterController::class, 'destroyWhitelist'])->name('master.whitelist.destroy');
 
     Route::get('/kehadiran/rekap', [KehadiranController::class, 'rekap']);
+    Route::get('/kehadiran/rekap-individu', [KehadiranController::class, 'rekapIndividu'])->name('kehadiran.rekap-individu');
     Route::get('/kehadiran/log', [KehadiranController::class, 'log']);
 
     Route::get('/analitik/tren', [AnalitikController::class, 'tren']);
     Route::get('/analitik/tren/{tanggal}', [AnalitikController::class, 'trenDetail'])->name('analitik.tren.detail');
     Route::get('/analitik/tren/{tanggal}/dinas', [AnalitikController::class, 'trenDinas'])->name('analitik.tren.dinas');
     Route::get('/analitik/tren/{tanggal}/ijin/{kategori}', [AnalitikController::class, 'trenIjin'])->name('analitik.tren.ijin');
+    Route::get('/analitik/tren/{tanggal}/terlambat', [AnalitikController::class, 'trenTerlambat'])->name('analitik.tren.terlambat');
+    Route::get('/analitik/tren/{tanggal}/pulang-cepat', [AnalitikController::class, 'trenPulangCepat'])->name('analitik.tren.pulang-cepat');
+    Route::get('/analitik/tren/{tanggal}/tidak-hadir', [AnalitikController::class, 'trenTidakHadir'])->name('analitik.tren.tidak-hadir');
     Route::get('/analitik/tren/{tanggal}/tanpa-keterangan', [AnalitikController::class, 'trenTanpaKeterangan'])->name('analitik.tren.tanpa-keterangan');
     Route::get('/analitik/anomali', [AnalitikController::class, 'anomali']);
     Route::get('/analitik/anomali/export-pdf', [AnalitikController::class, 'exportAnomaliPdf'])->name('analitik.anomali.export');
     Route::get('/analitik/anomali/{id}', [AnalitikController::class, 'detailAnomali'])->name('analitik.anomali.detail');
+    Route::get('/analitik/anomali/{id}/export-pdf', [AnalitikController::class, 'exportAnomaliDetailPdf'])->name('analitik.anomali.detail.export');
     Route::patch('/analitik/anomali/{id}/review', [AnalitikController::class, 'reviewAnomali'])->name('analitik.anomali.review');
     Route::get('/analitik/clustering', [AnalitikController::class, 'clustering']);
+    Route::get('/analitik/evaluasi', [EvaluasiController::class, 'index'])->name('analitik.evaluasi');
 
     Route::get('/sinkronisasi', [SinkronisasiController::class, 'index']);
 

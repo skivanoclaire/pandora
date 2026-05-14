@@ -36,11 +36,24 @@ class SimpegSyncService
         ]);
 
         try {
+            $syncStartedAt = now()->toDateTimeString();
             $lastSync = $this->getLastSuccessfulSync($config['tabel_tujuan']);
             $result = $this->pullDelta($config, $lastSync);
 
+            // Hapus record yang sudah tidak ada di sumber SIMPEG
+            if ($config['hapus_stale'] ?? false) {
+                $result['deleted'] = $this->deleteStaleRecords(
+                    $config['tabel_tujuan'], $syncStartedAt
+                );
+            }
+
             $log->markSuccess($result['fetched'], $result['inserted'], $result['updated']);
-            Log::info("Sync {$config['tabel_sumber']}: {$result['fetched']} fetched, {$result['inserted']} inserted, {$result['updated']} updated");
+
+            $logMsg = "Sync {$config['tabel_sumber']}: {$result['fetched']} fetched, {$result['inserted']} inserted, {$result['updated']} updated";
+            if (isset($result['deleted']) && $result['deleted'] > 0) {
+                $logMsg .= ", {$result['deleted']} stale deleted";
+            }
+            Log::info($logMsg);
 
             return $result;
         } catch (\Throwable $e) {
@@ -48,6 +61,26 @@ class SimpegSyncService
             Log::error("Sync {$config['tabel_sumber']} gagal: {$e->getMessage()}");
             return ['fetched' => 0, 'inserted' => 0, 'updated' => 0, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Hapus record di tabel tujuan yang tidak ter-update pada sync run terakhir.
+     *
+     * Untuk tabel yang selalu sync SEMUA record dari sumber (tanpa filter delta),
+     * record yang synced_at-nya lebih lama dari waktu mulai sync berarti
+     * sudah tidak ada lagi di sumber SIMPEG (pegawai pensiun, mutasi, dll).
+     */
+    private function deleteStaleRecords(string $tabelTujuan, string $syncStartedAt): int
+    {
+        $deleted = DB::table($tabelTujuan)
+            ->where('synced_at', '<', $syncStartedAt)
+            ->delete();
+
+        if ($deleted > 0) {
+            Log::info("Hapus {$deleted} record stale dari {$tabelTujuan} (tidak ada lagi di sumber SIMPEG)");
+        }
+
+        return $deleted;
     }
 
     private function pullDelta(array $config, ?\DateTimeInterface $since): array
@@ -288,6 +321,7 @@ class SimpegSyncService
                 'pk_tujuan' => 'id_pegawai',
                 'kolom_delta' => null,
                 'initial_limit_col' => null,
+                'hapus_stale' => true, // Hapus pegawai yang sudah tidak aktif di SIMPEG
                 'kolom_map' => [
                     'id_pegawai' => 'id_pegawai', 'nip' => 'nip', 'nama' => 'nama',
                     'bebas_lokasi' => 'bebas_lokasi',
@@ -494,6 +528,37 @@ class SimpegSyncService
                     'lat' => 'latitude', 'lang' => 'longitude',
                     'jam' => 'jam', 'jamke' => 'jamke', 'id_maps' => 'id_maps',
                     'tgl' => 'tanggal',
+                ],
+            ],
+            [
+                'tabel_sumber' => 'peg_cuti',
+                'tabel_tujuan' => 'sync_simpeg_cuti',
+                'pk_sumber' => 'id_peg_cuti',
+                'pk_tujuan' => 'id_peg_cuti',
+                'kolom_delta' => null,
+                'initial_limit_col' => 'tanggal_mulai',
+                'kolom_map' => [
+                    'id_peg_cuti' => 'id_peg_cuti', 'id_pegawai' => 'id_pegawai',
+                    'id_cuti' => 'id_cuti',
+                    'tanggal_mulai' => 'tanggal_mulai', 'tanggal_selesai' => 'tanggal_selesai',
+                    'jumlah' => 'jumlah', 'no_sk' => 'no_sk',
+                    'tanggal_sk' => 'tanggal_sk', 'keterangan' => 'keterangan',
+                    'status' => 'status',
+                ],
+            ],
+            [
+                'tabel_sumber' => 'peg_ijintugas_belajar',
+                'tabel_tujuan' => 'sync_simpeg_tugas_belajar',
+                'pk_sumber' => 'id_belajar',
+                'pk_tujuan' => 'id_belajar',
+                'kolom_delta' => null,
+                'initial_limit_col' => null,
+                'kolom_map' => [
+                    'id_belajar' => 'id_belajar', 'id_pegawai' => 'id_pegawai',
+                    'tanggal_mulai' => 'tanggal_mulai', 'tanggal_selesai' => 'tanggal_selesai',
+                    'no_sk' => 'no_sk', 'tanggal_sk' => 'tanggal_sk',
+                    'tipe' => 'tipe', 'status' => 'status',
+                    'nama_instansi' => 'nama_instansi',
                 ],
             ],
             [

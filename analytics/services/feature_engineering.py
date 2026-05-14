@@ -29,6 +29,15 @@ from models.staging import (
 from models.analytics import FeatureKehadiranHarian
 from services.jadwal_resolver import resolve_jadwal_batch
 
+# Nama lokasi WFA dari SIKARA — pegawai boleh absen dari manapun
+# Ada dua variasi penulisan di SIKARA: "WORK FROM ANYWHERE" dan "W F A"
+WFA_LOCATION_NAMES = {"WORK FROM ANYWHERE", "W F A"}
+
+
+def _is_wfa(nama_lokasi: str | None) -> bool:
+    """Cek apakah nama lokasi adalah Work From Anywhere."""
+    return (nama_lokasi or "").strip().upper() in WFA_LOCATION_NAMES
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Jarak antara dua titik koordinat dalam kilometer (formula Haversine)."""
@@ -152,7 +161,18 @@ def run_feature_engineering(
     unit_ids = set(pegawai_units.values()) - {None}
     lokasi_per_unit = _build_lokasi_per_unit(db, unit_ids)
 
-    # 5. Pre-fetch rekap kemarin untuk velocity_vs_kemarin
+    # 5. Deteksi sumber presensi: pegawai yang tidak pernah punya koordinat = fingerprint
+    # Subquery: apakah pegawai pernah punya lat_berangkat di seluruh riwayat
+    from sqlalchemy import exists, and_
+    pegawai_pernah_coords = set()
+    if pegawai_ids:
+        rows_coords = db.query(SyncPresentRekap.id_pegawai).filter(
+            SyncPresentRekap.id_pegawai.in_(pegawai_ids),
+            SyncPresentRekap.lat_berangkat.isnot(None),
+        ).distinct().all()
+        pegawai_pernah_coords = {r[0] for r in rows_coords}
+
+    # Pre-fetch rekap kemarin untuk velocity_vs_kemarin
     kemarin = tanggal - timedelta(days=1)
     rekap_kemarin = {
         r.id_pegawai: r
@@ -162,13 +182,13 @@ def run_feature_engineering(
         ).all()
     }
 
-    # 6. Pre-fetch median personal (30 hari terakhir)
+    # Pre-fetch median personal (30 hari terakhir)
     median_personal = _compute_median_personal(db, pegawai_ids, tanggal)
 
-    # 7. Pre-fetch median unit
+    # Pre-fetch median unit
     median_unit = _compute_median_unit(db, unit_ids, tanggal)
 
-    # 8. Hitung fitur per rekap
+    # Hitung fitur per rekap
     now = datetime.utcnow()
     inserted = 0
     skipped = 0
@@ -178,6 +198,9 @@ def run_feature_engineering(
         jadwal = jadwal_map.get(pid)
         unit_id = pegawai_units.get(pid)
         lokasi_list = lokasi_per_unit.get(unit_id, []) if unit_id else []
+
+        # Tentukan sumber presensi
+        sumber = "fingerprint" if pid not in pegawai_pernah_coords else "mobile"
 
         # Velocity berangkat → pulang (dalam satu hari)
         vel_bp = compute_velocity(
@@ -196,19 +219,25 @@ def run_feature_engineering(
 
         # Jarak dari geofence
         is_exempt = pid in bebas_lokasi_set
-        if is_exempt:
+        is_wfa_berangkat = _is_wfa(rekap.nama_lokasi_berangkat)
+        is_wfa_pulang = _is_wfa(rekap.nama_lokasi_pulang)
+
+        if is_exempt or is_wfa_berangkat:
             jarak_berangkat, match_berangkat = None, "exempt"
-            jarak_pulang, match_pulang = None, "exempt"
         else:
             jarak_berangkat, match_berangkat = compute_geofence_distance(
                 rekap.lat_berangkat, rekap.long_berangkat, lokasi_list,
             )
+
+        if is_exempt or is_wfa_pulang:
+            jarak_pulang, match_pulang = None, "exempt"
+        else:
             jarak_pulang, match_pulang = compute_geofence_distance(
                 rekap.lat_pulang, rekap.long_pulang, lokasi_list,
             )
 
         # Gabungkan match flags
-        if is_exempt:
+        if is_exempt or (is_wfa_berangkat and is_wfa_pulang):
             geo_flag = "exempt"
         elif match_berangkat == "match" and match_pulang == "match":
             geo_flag = "match"
@@ -270,6 +299,7 @@ def run_feature_engineering(
             jarak_dari_geofence_pulang=jarak_pulang,
             geofence_match_flag=geo_flag,
             aplikasi_fake_gps_terdeteksi=False,  # Akan diisi rule engine
+            sumber_presensi=sumber,
             id_group_efektif=jadwal.id_group if jadwal else None,
             sumber_jadwal=jadwal.tipe if jadwal else "undefined",
             jam_masuk_ekspektasi=jadwal.jam_masuk if jadwal else None,

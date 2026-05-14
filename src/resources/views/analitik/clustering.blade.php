@@ -40,7 +40,7 @@
 </div>
 
 {{-- Stat cards --}}
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
     <div class="bg-pandora-surface rounded-lg p-3 border border-white/5 text-center">
         <p class="text-xl font-bold text-pandora-danger">{{ $noisePoints->count() }}</p>
         <p class="text-xs text-pandora-muted mt-1">Titik Terisolasi</p>
@@ -60,6 +60,16 @@
         <p class="text-xl font-bold {{ $diluarKaltara->count() > 0 ? 'text-pandora-danger' : 'text-pandora-success' }}">{{ $diluarKaltara->count() }}</p>
         <p class="text-xs text-pandora-muted mt-1">Di Luar Kaltara</p>
         <p class="text-[10px] text-pandora-muted/60">Absen dari luar provinsi</p>
+    </div>
+    <div class="bg-pandora-surface rounded-lg p-3 border border-white/5 text-center">
+        <p class="text-xl font-bold {{ $wfaDiluarKaltara->count() > 0 ? 'text-pandora-gold' : 'text-pandora-success' }}">{{ $wfaDiluarKaltara->count() }}</p>
+        <p class="text-xs text-pandora-muted mt-1">WFA Luar Kaltara</p>
+        <p class="text-[10px] text-pandora-muted/60">WFA dari luar provinsi</p>
+    </div>
+    <div class="bg-pandora-surface rounded-lg p-3 border border-white/5 text-center">
+        <p class="text-xl font-bold {{ $corroboratedCount > 0 ? 'text-purple-400' : 'text-pandora-muted' }}">{{ $corroboratedCount }}</p>
+        <p class="text-xs text-pandora-muted mt-1">Corroborated</p>
+        <p class="text-[10px] text-pandora-muted/60">IF + DBSCAN</p>
     </div>
 </div>
 
@@ -95,10 +105,56 @@
                         <td class="px-4 py-2.5 text-center text-pandora-text text-xs">{{ $dl->tanggal }}</td>
                         <td class="px-4 py-2.5">
                             <p class="text-pandora-danger text-sm font-medium">{{ $dl->kota }}</p>
-                            <p class="text-pandora-muted/60 text-[10px] font-mono">{{ number_format($dl->lat, 4) }}, {{ number_format($dl->lng, 4) }}</p>
+                            <p class="text-pandora-muted/60 text-[10px] font-mono">{{ rtrim(rtrim(number_format($dl->lat, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($dl->lng, 7), '0'), '.') }}</p>
                         </td>
                         <td class="px-4 py-2.5 text-center">
                             <a href="{{ route('analitik.anomali.detail', $dl->id) }}" class="px-2 py-1 rounded text-xs bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors">Detail</a>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
+{{-- WFA di luar Kaltara --}}
+@if($wfaDiluarKaltara->count() > 0)
+<div class="bg-pandora-gold/10 rounded-xl border border-pandora-gold/30 overflow-hidden mb-5">
+    <div class="px-5 py-3 border-b border-pandora-gold/20">
+        <h2 class="text-sm font-semibold text-pandora-gold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            WFA dari Luar Wilayah Kalimantan Utara
+        </h2>
+        <p class="text-xs text-pandora-gold/70 mt-1">Pegawai dengan status WFA (Work From Anywhere) yang check-in dari luar provinsi Kalimantan Utara. Bukan anomali, tapi perlu diperhatikan apabila frekuensinya tidak wajar.</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-pandora-gold/5 text-pandora-gold/80 text-xs uppercase tracking-wider">
+                    <th class="px-4 py-2.5 text-left">Pegawai</th>
+                    <th class="px-4 py-2.5 text-left">Instansi</th>
+                    <th class="px-4 py-2.5 text-center">Tanggal</th>
+                    <th class="px-4 py-2.5 text-left">Lokasi Terdeteksi</th>
+                    <th class="px-4 py-2.5 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-pandora-gold/10">
+                @foreach($wfaDiluarKaltara as $w)
+                    <tr class="hover:bg-pandora-gold/5 transition-colors">
+                        <td class="px-4 py-2.5">
+                            <p class="text-pandora-text text-sm">{{ $w->nama }}</p>
+                            <p class="text-pandora-muted text-xs font-mono">{{ $w->nip }}</p>
+                        </td>
+                        <td class="px-4 py-2.5 text-pandora-muted text-xs">{{ \Illuminate\Support\Str::limit($w->nama_unit ?? '-', 25) }}</td>
+                        <td class="px-4 py-2.5 text-center text-pandora-text text-xs">{{ $w->tanggal }}</td>
+                        <td class="px-4 py-2.5">
+                            <p class="text-pandora-gold text-sm font-medium">{{ $w->kota }}</p>
+                            <p class="text-pandora-muted/60 text-[10px] font-mono">{{ rtrim(rtrim(number_format($w->lat, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($w->lng, 7), '0'), '.') }}</p>
+                        </td>
+                        <td class="px-4 py-2.5 text-center">
+                            <a href="{{ route('kehadiran.rekap-individu', ['pegawai' => $w->id_pegawai, 'bulan' => \Carbon\Carbon::parse($w->tanggal)->month, 'tahun' => \Carbon\Carbon::parse($w->tanggal)->year]) }}"
+                               class="px-2 py-1 rounded text-xs bg-pandora-gold/20 text-pandora-gold hover:bg-pandora-gold/30 transition-colors">Detail</a>
                         </td>
                     </tr>
                 @endforeach
@@ -114,6 +170,7 @@
     <div class="flex flex-wrap items-center gap-4 mb-3">
         <span class="flex items-center gap-1.5 text-xs text-pandora-muted"><span class="w-3 h-3 rounded-full bg-pandora-danger inline-block"></span> Titik terisolasi (DBSCAN)</span>
         <span class="flex items-center gap-1.5 text-xs text-pandora-muted"><span class="w-3 h-3 rounded-full bg-pandora-accent inline-block"></span> Outlier multivariate (IF)</span>
+        <span class="flex items-center gap-1.5 text-xs text-pandora-muted"><span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> Corroborated (IF+DBSCAN)</span>
         <span class="flex items-center gap-1.5 text-xs text-pandora-muted"><span class="w-3 h-3 rounded-full bg-pandora-gold inline-block"></span> Hotspot lokasi</span>
     </div>
     <div id="clusterMap" class="h-80 md:h-[500px] rounded-lg overflow-hidden"></div>
@@ -247,6 +304,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const dbscanData = @json($clusters);
     const ifData = @json($ifOutliers);
     const hotspotData = @json($hotspots);
+    const corrData = @json($corroboratedPoints);
+    const corrIds = new Set(corrData.map(c => c.id));
 
     const map = L.map('clusterMap', { zoomControl: false }).setView([3.0, 117.4], 9);
     L.control.zoom({ position: 'topright' }).addTo(map);
@@ -283,6 +342,16 @@ document.addEventListener('DOMContentLoaded', function() {
         L.circle([lat, lng], {
             radius: 500, fillColor: '#f0a500', color: '#f0a500', weight: 2, opacity: 0.6, fillOpacity: 0.15,
         }).addTo(map).bindPopup(`<b>Hotspot: ${h.lokasi}</b><br>${h.jumlah_anomali} anomali · ${h.jumlah_pegawai} pegawai`);
+    });
+
+    // Corroborated (ungu, di atas semua layer)
+    corrData.forEach(function(p) {
+        const lat = parseFloat(p.lat), lng = parseFloat(p.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+        bounds.push([lat, lng]);
+        L.circleMarker([lat, lng], {
+            radius: 8, fillColor: '#a855f7', color: '#7c3aed', weight: 2, opacity: 1, fillOpacity: 0.7,
+        }).addTo(map).bindPopup(`<b>${p.nama}</b><br><small>${p.nama_unit||''}</small><br><span style="color:#a855f7;font-weight:bold">Corroborated (IF+DBSCAN)</span> · ${Math.round(p.confidence*100)}%`);
     });
 
     if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 13 });

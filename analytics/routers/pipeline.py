@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from services.feature_engineering import run_feature_engineering
 from services.rule_engine import run_rules_tingkat1, run_rules_tingkat2
-from services.ml_pipeline import run_isolation_forest, run_dbscan
+from services.ml_pipeline import run_isolation_forest, run_dbscan, run_corroboration
 
 router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 
@@ -46,6 +46,7 @@ class PipelineResponse(BaseModel):
     rule_engine: Optional[dict] = None
     isolation_forest: Optional[dict] = None
     dbscan: Optional[dict] = None
+    corroboration: Optional[dict] = None
     duration_seconds: Optional[float] = None
 
 
@@ -73,6 +74,9 @@ def run_daily_pipeline(req: DailyRequest, db: Session = Depends(get_db)):
     if_result = run_isolation_forest(db, window_start, req.tanggal)
     dbscan_result = run_dbscan(db, window_start, req.tanggal)
 
+    # 4. Corroboration: cross-check IF + DBSCAN
+    corr_result = run_corroboration(db, window_start, req.tanggal)
+
     elapsed = (datetime.utcnow() - start).total_seconds()
 
     return PipelineResponse(
@@ -82,6 +86,7 @@ def run_daily_pipeline(req: DailyRequest, db: Session = Depends(get_db)):
         rule_engine=re_result,
         isolation_forest=if_result,
         dbscan=dbscan_result,
+        corroboration=corr_result,
         duration_seconds=round(elapsed, 2),
     )
 
@@ -119,6 +124,9 @@ def run_monthly_pipeline(req: MonthlyRequest, db: Session = Depends(get_db)):
     if_result = run_isolation_forest(db, tgl_awal, tgl_akhir)
     dbscan_result = run_dbscan(db, tgl_awal, tgl_akhir)
 
+    # 4. Corroboration: cross-check IF + DBSCAN
+    corr_result = run_corroboration(db, tgl_awal, tgl_akhir)
+
     elapsed = (datetime.utcnow() - start).total_seconds()
 
     return PipelineResponse(
@@ -128,6 +136,66 @@ def run_monthly_pipeline(req: MonthlyRequest, db: Session = Depends(get_db)):
         rule_engine=re_result,
         isolation_forest=if_result,
         dbscan=dbscan_result,
+        corroboration=corr_result,
+        duration_seconds=round(elapsed, 2),
+    )
+
+
+class ReprocessRequest(BaseModel):
+    tanggal_awal: date
+    tanggal_akhir: date
+    hapus_anomali_rule_engine: bool = True
+
+
+@router.post("/reprocess", response_model=PipelineResponse)
+def reprocess_pipeline(req: ReprocessRequest, db: Session = Depends(get_db)):
+    """
+    Hapus anomali lama dari rule engine dan jalankan ulang pipeline
+    untuk rentang tanggal tertentu.
+
+    Digunakan setelah perbaikan logika deteksi (misal: perubahan rule fake GPS)
+    agar anomali false positive yang lama dibersihkan dan dievaluasi ulang.
+    """
+    from models.analytics import AnomalyFlag
+
+    start = datetime.utcnow()
+
+    # 1. Hapus anomali rule engine lama dalam rentang tanggal
+    deleted_count = 0
+    if req.hapus_anomali_rule_engine:
+        deleted_count = db.query(AnomalyFlag).filter(
+            AnomalyFlag.tanggal.between(req.tanggal_awal, req.tanggal_akhir),
+            AnomalyFlag.metode_deteksi == "rule_engine",
+        ).delete(synchronize_session=False)
+        db.commit()
+
+    # 2. Re-run feature engineering + rule engine Tingkat 1 per hari
+    fe_total = {"total": 0, "inserted": 0, "skipped": 0}
+    re_total = {"total_checked": 0, "anomalies_found": 0}
+
+    current = req.tanggal_awal
+    while current <= req.tanggal_akhir:
+        fe = run_feature_engineering(db, current, is_final=False)
+        fe_total["total"] += fe["total"]
+        fe_total["inserted"] += fe["inserted"]
+        fe_total["skipped"] += fe["skipped"]
+
+        re = run_rules_tingkat1(db, current)
+        re_total["total_checked"] += re["total_checked"]
+        re_total["anomalies_found"] += re["anomalies_found"]
+
+        current += timedelta(days=1)
+
+    elapsed = (datetime.utcnow() - start).total_seconds()
+
+    return PipelineResponse(
+        status="completed",
+        tanggal=f"{req.tanggal_awal} — {req.tanggal_akhir}",
+        feature_engineering=fe_total,
+        rule_engine={
+            **re_total,
+            "anomali_lama_dihapus": deleted_count,
+        },
         duration_seconds=round(elapsed, 2),
     )
 
@@ -150,6 +218,8 @@ def run_ml_only(req: MLRequest, db: Session = Depends(get_db)):
         min_samples=req.min_samples,
     )
 
+    corr_result = run_corroboration(db, req.tanggal_awal, req.tanggal_akhir)
+
     elapsed = (datetime.utcnow() - start).total_seconds()
 
     return PipelineResponse(
@@ -157,6 +227,7 @@ def run_ml_only(req: MLRequest, db: Session = Depends(get_db)):
         tanggal=f"{req.tanggal_awal} — {req.tanggal_akhir}",
         isolation_forest=if_result,
         dbscan=dbscan_result,
+        corroboration=corr_result,
         duration_seconds=round(elapsed, 2),
     )
 

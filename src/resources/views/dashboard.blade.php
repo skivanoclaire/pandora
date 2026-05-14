@@ -90,9 +90,14 @@
 
     <!-- Peta Anomali + Anomali Terbaru (dipindah ke atas OPD) -->
     <div class="lg:col-span-1 bg-pandora-surface rounded-xl p-5 border border-white/5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-pandora-text">Peta Anomali</h2>
-            <span class="text-xs text-pandora-muted">{{ $petaAnomali->count() }} titik</span>
+            <span class="text-xs text-pandora-muted">{{ $petaAnomali->count() + $petaWfaLuarKaltara->count() }} titik</span>
+        </div>
+        <div class="flex flex-wrap gap-3 mb-3 text-[10px] text-pandora-muted">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#ff4757] inline-block"></span> T1 Fisik</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#f0a500] inline-block"></span> WFA Luar Kaltara</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#00b4d8] inline-block"></span> T3 ML</span>
         </div>
         <div id="anomalyMap" class="h-64 md:h-80 rounded-lg overflow-hidden"></div>
     </div>
@@ -314,6 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // === Peta Anomali (Leaflet) ===
     const mapEl = document.getElementById('anomalyMap');
     const anomalyData = @json($petaAnomali);
+    const wfaData = @json($petaWfaLuarKaltara);
 
     if (mapEl) {
         // Center: Kalimantan Utara (Tanjung Selor approx)
@@ -351,7 +357,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     `<div style="font-size:12px;line-height:1.6">
                         <strong>T${p.tingkat}</strong> &mdash; ${p.jenis_anomali.replace(/_/g, ' ')}<br>
                         Confidence: ${Math.round(p.confidence * 100)}%<br>
-                        Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}
+                        Koordinat: ${lat.toFixed(7)}, ${lng.toFixed(7)}<br>
+                        <a href="/analitik/anomali/${p.id}" style="display:inline-block;margin-top:6px;padding:3px 10px;background:#6366f1;color:#fff;border-radius:4px;text-decoration:none;font-size:11px;">Lihat Detail &rarr;</a>
+                    </div>`
+                );
+            });
+
+            // WFA di luar Kaltara (kuning)
+            wfaData.forEach(function(w) {
+                const lat = parseFloat(w.lat);
+                const lng = parseFloat(w.lng);
+                if (isNaN(lat) || isNaN(lng)) return;
+                bounds.push([lat, lng]);
+                L.circleMarker([lat, lng], {
+                    radius: 5, fillColor: '#f0a500', color: '#f0a500',
+                    weight: 1, opacity: 0.7, fillOpacity: 0.4,
+                }).addTo(map).bindPopup(
+                    `<div style="font-size:12px;line-height:1.6">
+                        <strong style="color:#f0a500">WFA Luar Kaltara</strong><br>
+                        ${w.nama} (${w.nip})<br>
+                        ${w.nama_unit || '-'}<br>
+                        ${w.tanggal}<br>
+                        <a href="/analitik/clustering" style="display:inline-block;margin-top:6px;padding:3px 10px;background:#f0a500;color:#000;border-radius:4px;text-decoration:none;font-size:11px;">Lihat Clustering &rarr;</a>
                     </div>`
                 );
             });

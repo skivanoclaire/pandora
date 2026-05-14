@@ -3,6 +3,7 @@ ML Pipeline: Isolation Forest + DBSCAN untuk deteksi anomali Tingkat 3.
 
 Isolation Forest — deteksi multivariate anomaly berdasarkan fitur numerik.
 DBSCAN — spatial clustering untuk mendeteksi pola lokasi tidak wajar.
+Corroboration — cross-check IF+DBSCAN: anomali yang dikonfirmasi keduanya.
 
 Output: anomaly_flags dengan tingkat=3, metode_deteksi sesuai model.
 """
@@ -19,7 +20,8 @@ from sklearn.preprocessing import StandardScaler
 from sqlalchemy.orm import Session
 
 from models.analytics import AnomalyFlag, FeatureKehadiranHarian
-from models.staging import SyncPresentRekap
+from models.staging import SyncPresentRekap, SyncPegPegawai, SyncRefBantuUnit, SyncRefLokasiUnit
+from services.rule_engine import _lookup_pegawai_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +61,10 @@ def run_isolation_forest(
         contamination: Proporsi anomali yang diharapkan (default 5%)
         n_estimators: Jumlah pohon
     """
-    # 1. Ambil data fitur
+    # 1. Ambil data fitur (skip fingerprint — fitur spasial selalu NULL)
     features = db.query(FeatureKehadiranHarian).filter(
         FeatureKehadiranHarian.tanggal.between(tanggal_awal, tanggal_akhir),
+        FeatureKehadiranHarian.sumber_presensi != "fingerprint",
     ).all()
 
     if len(features) < 30:
@@ -143,8 +146,15 @@ def run_isolation_forest(
             if not pd.isna(val):
                 feature_vals[col] = round(float(val), 2)
 
+        pid = int(row["id_pegawai"])
+        if pid <= 0:
+            continue
+        nama, nip, nama_unit = _lookup_pegawai_snapshot(db, pid)
         db.add(AnomalyFlag(
-            id_pegawai=int(row["id_pegawai"]),
+            id_pegawai=pid,
+            nama_snapshot=nama,
+            nip_snapshot=nip,
+            nama_unit_snapshot=nama_unit,
             tanggal=row["tanggal"],
             jenis_anomali="combination",
             confidence=float(row["confidence"]),
@@ -230,13 +240,71 @@ def run_dbscan(
     # 4. Noise points (cluster == -1) = lokasi terisolasi
     noise_df = df[df["cluster"] == -1]
 
-    # 5. Insert anomaly flags untuk noise points
+    # 5. Pre-fetch geofence per unit untuk noise points
+    #    Skip noise points yang koordinatnya sudah dalam geofence unit sendiri
+    #    (lokasi sah tapi terpencil, bukan anomali)
+    noise_pids = list(noise_df["id_pegawai"].unique())
+    pegawai_unit_map = {}
+    lokasi_per_unit = {}
+
+    if noise_pids:
+        pegawai_unit_map = {
+            p.id_pegawai: p.id_unit
+            for p in db.query(SyncPegPegawai).filter(
+                SyncPegPegawai.id_pegawai.in_(noise_pids),
+            ).all()
+        }
+
+        unit_ids = set(pegawai_unit_map.values()) - {None}
+        if unit_ids:
+            bantu = db.query(SyncRefBantuUnit).filter(
+                SyncRefBantuUnit.id_unit.in_(unit_ids),
+            ).all()
+            lokasi_ids = {b.id_lokasi for b in bantu}
+
+            if lokasi_ids:
+                lokasi_all = {
+                    l.id_lokasi: l
+                    for l in db.query(SyncRefLokasiUnit).filter(
+                        SyncRefLokasiUnit.id_lokasi.in_(lokasi_ids),
+                        SyncRefLokasiUnit.aktif == True,
+                    ).all()
+                }
+                from collections import defaultdict
+                lokasi_per_unit = defaultdict(list)
+                for b in bantu:
+                    lok = lokasi_all.get(b.id_lokasi)
+                    if lok and lok.latitude and lok.longitude:
+                        lokasi_per_unit[b.id_unit].append(lok)
+
+    # 6. Insert anomaly flags untuk noise points (skip yang dalam geofence)
     now = datetime.utcnow()
     inserted = 0
+    skipped_geofence = 0
 
     for _, row in noise_df.iterrows():
+        pid = int(row["id_pegawai"])
+        if pid <= 0:
+            continue
+        lat, lon = row["lat"], row["lon"]
+
+        # Cek apakah koordinat dalam geofence unit sendiri
+        unit_id = pegawai_unit_map.get(pid)
+        if unit_id and unit_id in lokasi_per_unit:
+            in_geofence = False
+            for lok in lokasi_per_unit[unit_id]:
+                from services.feature_engineering import haversine_km
+                dist_m = haversine_km(lat, lon, float(lok.latitude), float(lok.longitude)) * 1000
+                radius = lok.radius or 100
+                if dist_m <= radius:
+                    in_geofence = True
+                    break
+            if in_geofence:
+                skipped_geofence += 1
+                continue
+
         exists = db.query(AnomalyFlag).filter(
-            AnomalyFlag.id_pegawai == int(row["id_pegawai"]),
+            AnomalyFlag.id_pegawai == pid,
             AnomalyFlag.tanggal == row["tanggal"],
             AnomalyFlag.metode_deteksi == "dbscan",
         ).first()
@@ -244,8 +312,12 @@ def run_dbscan(
         if exists:
             continue
 
+        nama, nip, nama_unit = _lookup_pegawai_snapshot(db, pid)
         db.add(AnomalyFlag(
-            id_pegawai=int(row["id_pegawai"]),
+            id_pegawai=pid,
+            nama_snapshot=nama,
+            nip_snapshot=nip,
+            nama_unit_snapshot=nama_unit,
             tanggal=row["tanggal"],
             jenis_anomali="combination",
             confidence=0.60,
@@ -253,8 +325,8 @@ def run_dbscan(
             metode_deteksi="dbscan",
             model_version=MODEL_VERSION,
             detail_metadata={
-                "lat": round(row["lat"], 7),
-                "lon": round(row["lon"], 7),
+                "lat": round(lat, 7),
+                "lon": round(lon, 7),
                 "cluster_label": -1,
                 "total_clusters": int(df["cluster"].max() + 1) if df["cluster"].max() >= 0 else 0,
                 "noise_points": int(len(noise_df)),
@@ -275,7 +347,92 @@ def run_dbscan(
         "total_points": len(df),
         "n_clusters": n_clusters,
         "noise_points": len(noise_df),
+        "skipped_geofence_match": skipped_geofence,
         "anomalies_inserted": inserted,
         "eps_km": eps_km,
         "min_samples": min_samples,
+    }
+
+
+def run_corroboration(
+    db: Session,
+    tanggal_awal: date,
+    tanggal_akhir: date,
+) -> dict:
+    """
+    Cross-check Isolation Forest dan DBSCAN: tandai anomali yang dikonfirmasi keduanya.
+
+    IF mendeteksi anomali global multivariat (8 fitur).
+    DBSCAN mendeteksi anomali spasial (lokasi terisolasi).
+    Jika keduanya sepakat pada (id_pegawai, tanggal) yang sama,
+    confidence meningkat dan anomali ditandai corroborated.
+    """
+    from sqlalchemy import and_, text
+
+    # Cari pasangan (id_pegawai, tanggal) yang di-flag oleh KEDUA metode
+    if_flags = db.query(
+        AnomalyFlag.id_pegawai, AnomalyFlag.tanggal,
+    ).filter(
+        AnomalyFlag.metode_deteksi == "isolation_forest",
+        AnomalyFlag.tanggal.between(tanggal_awal, tanggal_akhir),
+        AnomalyFlag.status_review == "belum_direview",
+    ).subquery()
+
+    dbscan_flags = db.query(
+        AnomalyFlag.id_pegawai, AnomalyFlag.tanggal,
+    ).filter(
+        AnomalyFlag.metode_deteksi == "dbscan",
+        AnomalyFlag.tanggal.between(tanggal_awal, tanggal_akhir),
+        AnomalyFlag.status_review == "belum_direview",
+    ).subquery()
+
+    # INTERSECT: pegawai + tanggal yang muncul di kedua hasil
+    pairs = db.execute(
+        text("""
+            SELECT id_pegawai, tanggal FROM anomaly_flags
+            WHERE metode_deteksi = 'isolation_forest'
+              AND tanggal BETWEEN :awal AND :akhir
+              AND status_review = 'belum_direview'
+            INTERSECT
+            SELECT id_pegawai, tanggal FROM anomaly_flags
+            WHERE metode_deteksi = 'dbscan'
+              AND tanggal BETWEEN :awal AND :akhir
+              AND status_review = 'belum_direview'
+        """),
+        {"awal": tanggal_awal, "akhir": tanggal_akhir},
+    ).fetchall()
+
+    if not pairs:
+        return {"status": "completed", "corroborated": 0}
+
+    now = datetime.utcnow()
+    updated = 0
+
+    for pid, tgl in pairs:
+        # Update semua anomali IF dan DBSCAN untuk pasangan ini
+        flags = db.query(AnomalyFlag).filter(
+            AnomalyFlag.id_pegawai == pid,
+            AnomalyFlag.tanggal == tgl,
+            AnomalyFlag.metode_deteksi.in_(["isolation_forest", "dbscan"]),
+            AnomalyFlag.status_review == "belum_direview",
+        ).all()
+
+        for flag in flags:
+            if flag.corroborated:
+                continue  # Sudah di-corroborate sebelumnya
+
+            flag.corroborated = True
+            flag.confidence = min(1.0, float(flag.confidence) + 0.15)
+            flag.catatan_sistem = "Dikonfirmasi oleh IF + DBSCAN"
+            flag.updated_at = now
+            updated += 1
+
+    db.commit()
+
+    logger.info(f"Corroboration: {len(pairs)} pasangan, {updated} flags updated")
+
+    return {
+        "status": "completed",
+        "corroborated_pairs": len(pairs),
+        "flags_updated": updated,
     }

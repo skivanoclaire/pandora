@@ -47,7 +47,7 @@
                     <th class="px-4 py-3 text-center">Total</th>
                     <th class="px-4 py-3 text-center">Hadir</th>
                     <th class="px-4 py-3 text-center">Terlambat</th>
-                    <th class="px-4 py-3 text-center">Tidak Hadir</th>
+                    <th class="px-4 py-3 text-center">Pulang Cepat</th>
                     <th class="px-4 py-3 text-center">DL/DD</th>
                     <th class="px-4 py-3 text-center">Cuti</th>
                     <th class="px-4 py-3 text-center">Sakit</th>
@@ -62,8 +62,20 @@
                         <td class="px-4 py-2.5 text-pandora-text">{{ \Carbon\Carbon::parse($t['tanggal'])->translatedFormat('d M Y (l)') }}</td>
                         <td class="px-4 py-2.5 text-center text-pandora-muted">{{ $t['total'] }}</td>
                         <td class="px-4 py-2.5 text-center text-pandora-success">{{ $t['hadir'] }}</td>
-                        <td class="px-4 py-2.5 text-center text-pandora-gold">{{ $t['terlambat'] }}</td>
-                        <td class="px-4 py-2.5 text-center text-pandora-danger">{{ $t['tidak_hadir'] }}</td>
+                        <td class="px-4 py-2.5 text-center text-xs">
+                            @if($t['terlambat'] > 0)
+                                <a href="{{ route('analitik.tren.terlambat', $t['tanggal']) }}" class="text-pandora-gold font-medium hover:underline">{{ $t['terlambat'] }}</a>
+                            @else
+                                <span class="text-pandora-muted">-</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2.5 text-center text-xs">
+                            @if($t['pulang_cepat'] > 0)
+                                <a href="{{ route('analitik.tren.pulang-cepat', $t['tanggal']) }}" class="text-pandora-gold font-medium hover:underline">{{ $t['pulang_cepat'] }}</a>
+                            @else
+                                <span class="text-pandora-muted">-</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-2.5 text-center text-xs">
                             @if($t['dinas_luar'] > 0)
                                 <a href="{{ route('analitik.tren.dinas', $t['tanggal']) }}" class="text-pandora-accent hover:underline">{{ $t['dinas_luar'] }}</a>
@@ -149,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [
                 { label: 'Hadir', data: barData.map(d => d.hadir - d.terlambat), backgroundColor: '#00c48c', borderRadius: 2 },
                 { label: 'Terlambat', data: barData.map(d => d.terlambat), backgroundColor: '#f0a500', borderRadius: 2 },
-                { label: 'Tidak Hadir', data: barData.map(d => d.tidak_hadir), backgroundColor: '#ff4757', borderRadius: 2 },
+                { label: 'Pulang Cepat', data: barData.map(d => d.pulang_cepat), backgroundColor: '#ff8c42', borderRadius: 2 },
             ]
         },
         options: {

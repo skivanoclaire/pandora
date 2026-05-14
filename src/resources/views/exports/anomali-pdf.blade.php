@@ -28,10 +28,15 @@
     <table style="width: auto; margin-bottom: 15px;">
         <tr>
             <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px;">{{ $summary['total'] }}</strong><br><span style="color:#888;">Total</span></td>
-            <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px; color: #c00;">{{ $summary['tingkat1'] }}</strong><br><span style="color:#888;">Tingkat 1</span></td>
-            <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px; color: #068;">{{ $summary['tingkat3'] }}</strong><br><span style="color:#888;">Tingkat 3</span></td>
+            <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px; color: #c00;">{{ $summary['tingkat1'] ?? 0 }}</strong><br><span style="color:#888;">Tingkat 1</span></td>
+            <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px; color: #b80;">{{ $summary['tingkat2'] ?? 0 }}</strong><br><span style="color:#888;">Tingkat 2</span></td>
+            <td style="border: none; padding: 5px 20px 5px 0;"><strong style="font-size: 16px; color: #068;">{{ $summary['tingkat3'] ?? 0 }}</strong><br><span style="color:#888;">Tingkat 3</span></td>
         </tr>
     </table>
+
+    @if(($summary['ditampilkan'] ?? $summary['total']) < $summary['total'])
+        <p style="font-size: 10px; color: #b80; margin-bottom: 10px;">Menampilkan {{ $summary['ditampilkan'] }} dari {{ $summary['total'] }} anomali (diurutkan berdasarkan confidence tertinggi). Gunakan filter untuk mempersempit hasil.</p>
+    @endif
 
     <table>
         <thead>
@@ -51,8 +56,8 @@
             @foreach($anomalies as $a)
             <tr>
                 <td><span class="badge {{ $a->tingkat == 1 ? 'badge-t1' : ($a->tingkat == 2 ? 'badge-t2' : 'badge-t3') }}">{{ $a->tingkat }}</span></td>
-                <td>{{ $a->nama }}</td>
-                <td>{{ $a->nip }}</td>
+                <td>{{ $a->nama ?? 'Pegawai tidak diketahui' }}{{ ($a->pegawai_nonaktif ?? false) ? ' (non-aktif)' : '' }}</td>
+                <td>{{ $a->nip ?? '-' }}</td>
                 <td>{{ Str::limit($a->nama_unit ?? '-', 25) }}</td>
                 <td>{{ $a->tanggal }}</td>
                 <td>{{ str_replace('_', ' ', $a->jenis_anomali) }}</td>

@@ -173,6 +173,8 @@
                 <p class="text-xs text-pandora-muted/60">&copy; 2026 DKISP Kalimantan Utara - Bidang Aplikasi Informatika. All rights reserved.</p>
                 <p class="text-xs text-pandora-muted/50">
                     Dikembangkan oleh : <a href="https://www.linkedin.com/in/noclaire/" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/70 hover:text-pandora-accent transition-colors">Bayu Adi H.</a>
+                    <span class="mx-1.5">·</span>
+                    <a href="https://github.com/skivanoclaire" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/70 hover:text-pandora-accent transition-colors">GitHub</a>
                 </p>
             </div>
 

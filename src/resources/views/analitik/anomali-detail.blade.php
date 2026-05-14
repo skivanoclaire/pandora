@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Anomali — ' . $anomaly->nama)
+@section('title', 'Detail Anomali — ' . ($anomaly->nama ?? 'Pegawai tidak diketahui'))
 
 @section('content')
 @php
@@ -24,8 +24,13 @@
             <div class="flex items-center gap-3 mb-2">
                 <span class="inline-flex w-8 h-8 rounded-full bg-{{ $color }}/20 text-{{ $color }} items-center justify-center text-sm font-bold">{{ $anomaly->tingkat }}</span>
                 <div>
-                    <h1 class="text-xl font-bold text-white">{{ $anomaly->nama }}</h1>
-                    <p class="text-pandora-muted text-sm font-mono">{{ $anomaly->nip }} &middot; {{ $anomaly->nama_unit ?? '-' }}</p>
+                    <h1 class="text-xl font-bold text-white">
+                        {{ $anomaly->nama ?? 'Pegawai tidak diketahui' }}
+                        @if($anomaly->pegawai_nonaktif ?? false)
+                            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-medium bg-pandora-muted/20 text-pandora-muted/80 align-middle" title="Pegawai sudah pensiun atau mutasi keluar dari SIMPEG">non-aktif</span>
+                        @endif
+                    </h1>
+                    <p class="text-pandora-muted text-sm font-mono">{{ $anomaly->nip ?? 'id_pegawai: ' . $anomaly->id_pegawai }} &middot; {{ $anomaly->nama_unit ?? '-' }}</p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2 mt-3">
@@ -57,6 +62,24 @@
         </div>
     </div>
 </div>
+
+{{-- Corroborated alert --}}
+@if($anomaly->corroborated)
+<div class="bg-purple-500/10 rounded-xl border border-purple-500/30 p-5 mb-5">
+    <h3 class="text-xs uppercase tracking-wider text-purple-400 mb-3 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Dikonfirmasi oleh Dua Metode (Corroborated)
+    </h3>
+    <div class="text-sm text-pandora-text leading-relaxed space-y-1">
+        <p>Anomali ini dikonfirmasi oleh dua metode ML berbeda:</p>
+        <ul class="list-disc list-inside text-pandora-muted ml-2 space-y-1">
+            <li><strong class="text-pandora-text">Isolation Forest</strong> mendeteksi pola multivariat yang tidak normal (velocity, geofence, dan deviasi waktu secara bersamaan)</li>
+            <li><strong class="text-pandora-text">DBSCAN</strong> mendeteksi lokasi GPS terisolasi dari pola spasial unit kerja</li>
+        </ul>
+        <p class="text-purple-400 text-xs mt-2">Kombinasi keduanya meningkatkan keyakinan bahwa anomali ini bukan false positive.</p>
+    </div>
+</div>
+@endif
 
 {{-- Narasi utama --}}
 <div class="space-y-4 mb-5">
@@ -198,12 +221,12 @@
             @forelse($polaKehadiran as $pk)
                 @php
                     $isToday = $pk->tanggal === $anomaly->tanggal;
-                    $jamMasukJadwal = '07:30:00';
                     $hasJamMasuk = $pk->jam_masuk !== null;
                     $statusLabel = '-';
                     $statusColor = 'pandora-muted';
-                    if ($pk->tw == 1 || ($hasJamMasuk && $pk->jam_masuk <= $jamMasukJadwal)) { $statusLabel = 'TW'; $statusColor = 'pandora-success'; }
-                    elseif ($pk->mkttw == 1 || ($hasJamMasuk && $pk->jam_masuk > $jamMasukJadwal)) { $statusLabel = 'Terlambat'; $statusColor = 'pandora-gold'; }
+                    if ($hasJamMasuk && \App\Helpers\JamKerja::isTepatWaktuMasuk($pk->jam_masuk)) { $statusLabel = 'TW'; $statusColor = 'pandora-success'; }
+                    elseif ($hasJamMasuk && \App\Helpers\JamKerja::isTerlambat($pk->jam_masuk)) { $statusLabel = 'Terlambat'; $statusColor = 'pandora-gold'; }
+                    elseif ($hasJamMasuk && \App\Helpers\JamKerja::isDiluarJamMasuk($pk->jam_masuk)) { $statusLabel = 'DJM'; $statusColor = 'pandora-danger'; }
                     elseif ($pk->tk == 1 || !$hasJamMasuk) { $statusLabel = 'TK'; $statusColor = 'pandora-danger'; }
                     if ($pk->dl == 1) { $statusLabel = 'DL'; $statusColor = 'pandora-accent'; }
                     if ($pk->i == 1) { $statusLabel = 'Izin'; $statusColor = 'pandora-muted'; }
@@ -217,10 +240,13 @@
                         <span class="text-xs font-mono text-pandora-text">{{ $pk->jam_pulang ? \Carbon\Carbon::parse($pk->jam_pulang)->format('H:i') : '--:--' }}</span>
                         <span class="ml-auto px-1.5 py-0.5 rounded text-[10px] font-medium bg-{{ $statusColor }}/20 text-{{ $statusColor }}">{{ $statusLabel }}</span>
                     </div>
-                    {{-- Baris lokasi --}}
+                    {{-- Baris lokasi masuk --}}
                     @if($pk->lat_berangkat)
-                    <div class="px-3 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span class="text-[10px] text-pandora-muted/60 font-mono">{{ number_format($pk->lat_berangkat, 5) }}, {{ number_format($pk->long_berangkat, 5) }}</span>
+                    <div class="px-3 pb-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span class="flex-shrink-0 w-3 h-3 rounded-full bg-pandora-danger/20 flex items-center justify-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-pandora-danger"></span>
+                        </span>
+                        <span class="text-[10px] text-pandora-muted/60 font-mono">{{ rtrim(rtrim(number_format($pk->lat_berangkat, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($pk->long_berangkat, 7), '0'), '.') }}</span>
                         @if($pk->nama_lokasi_berangkat)
                             <span class="text-[10px] text-pandora-muted">{{ $pk->nama_lokasi_berangkat }}</span>
                         @endif
@@ -231,6 +257,27 @@
                             </span>
                         @endif
                         @if($pk->diluar_kaltara)
+                            <span class="text-[10px] font-semibold text-pandora-danger bg-pandora-danger/10 px-1.5 py-0.5 rounded">DI LUAR KALTARA</span>
+                        @endif
+                    </div>
+                    @endif
+                    {{-- Baris lokasi pulang --}}
+                    @if($pk->lat_pulang)
+                    <div class="px-3 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span class="flex-shrink-0 w-3 h-3 rounded-full bg-pandora-accent/20 flex items-center justify-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-pandora-accent"></span>
+                        </span>
+                        <span class="text-[10px] text-pandora-muted/60 font-mono">{{ rtrim(rtrim(number_format($pk->lat_pulang, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($pk->long_pulang, 7), '0'), '.') }}</span>
+                        @if($pk->nama_lokasi_pulang)
+                            <span class="text-[10px] text-pandora-muted">{{ $pk->nama_lokasi_pulang }}</span>
+                        @endif
+                        @if($pk->geo_pulang && $pk->geo_pulang['display'])
+                            <span class="text-[10px] font-medium {{ $pk->diluar_kaltara_pulang ? 'text-pandora-danger' : 'text-pandora-accent' }}">
+                                <svg class="w-3 h-3 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                {{ $pk->geo_pulang['display'] }}
+                            </span>
+                        @endif
+                        @if($pk->diluar_kaltara_pulang)
                             <span class="text-[10px] font-semibold text-pandora-danger bg-pandora-danger/10 px-1.5 py-0.5 rounded">DI LUAR KALTARA</span>
                         @endif
                     </div>
@@ -298,24 +345,96 @@
     <a href="/analitik/anomali" class="px-4 py-2 rounded-lg text-sm text-pandora-muted hover:text-pandora-text bg-pandora-surface border border-white/5 hover:border-white/10 transition-colors">
         &larr; Kembali
     </a>
+    <a href="{{ route('analitik.anomali.detail.export', $anomaly->id) }}" class="px-4 py-2 rounded-lg text-sm font-medium text-pandora-text bg-pandora-surface border border-white/5 hover:border-white/10 transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export PDF
+    </a>
     @if($anomaly->status_review === 'belum_direview')
         <form method="POST" action="{{ route('analitik.anomali.review', $anomaly->id) }}" class="flex gap-2">
             @csrf
             @method('PATCH')
             <button type="submit" name="status_review" value="valid"
-                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors">
+                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors"
+                    title="Konfirmasi bahwa anomali ini benar terjadi dan merupakan pelanggaran kehadiran yang perlu ditindaklanjuti.">
                 Tandai Valid
             </button>
             <button type="submit" name="status_review" value="false_positive"
-                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors">
+                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors"
+                    title="Tandai bahwa anomali ini bukan pelanggaran — misalnya karena pegawai bebas lokasi, dinas luar, atau ada konteks sah lainnya.">
                 False Positive
             </button>
         </form>
     @else
         <span class="px-4 py-2 rounded-lg text-sm {{ $anomaly->status_review === 'valid' ? 'bg-pandora-danger/10 text-pandora-danger' : 'bg-pandora-success/10 text-pandora-success' }}">
-            Direview: {{ $anomaly->status_review }}
+            Direview: {{ str_replace('_', ' ', $anomaly->status_review) }}
         </span>
+        {{-- Tombol revisi --}}
+        <div x-data="{ confirmRevisi: false }" class="relative">
+            <button @click="confirmRevisi = !confirmRevisi" class="px-3 py-2 rounded-lg text-xs text-pandora-muted hover:text-pandora-text bg-pandora-surface border border-white/5 hover:border-white/10 transition-colors">
+                Revisi
+            </button>
+            <div x-show="confirmRevisi" @click.outside="confirmRevisi = false" x-transition
+                 class="absolute bottom-full mb-2 left-0 bg-pandora-surface border border-white/10 rounded-lg p-3 shadow-xl z-10 w-56">
+                <p class="text-xs text-pandora-muted mb-2">Ubah status review:</p>
+                <form method="POST" action="{{ route('analitik.anomali.review', $anomaly->id) }}" class="flex flex-col gap-2">
+                    @csrf
+                    @method('PATCH')
+                    @if($anomaly->status_review !== 'valid')
+                        <button type="submit" name="status_review" value="valid" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors">Tandai Valid</button>
+                    @endif
+                    @if($anomaly->status_review !== 'false_positive')
+                        <button type="submit" name="status_review" value="false_positive" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors">Tandai False Positive</button>
+                    @endif
+                    <button type="submit" name="status_review" value="belum_direview" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-surface-light text-pandora-muted hover:text-pandora-text transition-colors">Kembalikan ke Belum Direview</button>
+                </form>
+            </div>
+        </div>
     @endif
+</div>
+
+{{-- Panduan Review --}}
+<div class="bg-pandora-surface rounded-xl border border-white/5 p-5 mt-5 mb-5">
+    <h3 class="text-xs uppercase tracking-wider text-pandora-muted mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Panduan Review Anomali
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {{-- Valid --}}
+        <div class="rounded-lg border border-pandora-danger/20 bg-pandora-danger/5 p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-danger/20 text-pandora-danger">Tandai Valid</span>
+            </div>
+            <p class="text-sm text-pandora-text mb-2">Pilih ini jika anomali <strong>benar-benar terjadi</strong> dan merupakan pelanggaran kehadiran.</p>
+            <p class="text-xs text-pandora-muted mb-2"><strong>Tandai valid apabila:</strong></p>
+            <ul class="text-xs text-pandora-muted space-y-1 list-disc list-inside">
+                <li>Pegawai terbukti menggunakan fake GPS (koordinat identik berulang, lokasi tidak masuk akal)</li>
+                <li>Pegawai absen di lokasi yang bukan unitnya tanpa alasan sah (tidak ada DL/DSP)</li>
+                <li>Velocity perpindahan tidak mungkin secara fisik (>300 km/jam)</li>
+                <li>Pola multivariat yang mencurigakan tanpa penjelasan operasional</li>
+            </ul>
+            <div class="mt-3 pt-3 border-t border-pandora-danger/10">
+                <p class="text-[11px] text-pandora-danger/80"><strong>Implikasi:</strong> Anomali valid akan masuk laporan ke pimpinan OPD, dihitung dalam metrik Precision sistem, dan dapat menjadi dasar tindak lanjut pembinaan pegawai oleh Inspektorat.</p>
+            </div>
+        </div>
+        {{-- False Positive --}}
+        <div class="rounded-lg border border-pandora-success/20 bg-pandora-success/5 p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-success/20 text-pandora-success">Tandai False Positive</span>
+            </div>
+            <p class="text-sm text-pandora-text mb-2">Pilih ini jika anomali <strong>bukan pelanggaran</strong> — ada konteks sah yang menjelaskan.</p>
+            <p class="text-xs text-pandora-muted mb-2"><strong>Tandai false positive apabila:</strong></p>
+            <ul class="text-xs text-pandora-muted space-y-1 list-disc list-inside">
+                <li>Pegawai memang bertugas di lokasi tersebut (dinas luar, tugas lapangan)</li>
+                <li>Koordinat berada di geofence unit sendiri tapi sistem salah deteksi</li>
+                <li>Ada SK/surat tugas yang menjelaskan keberadaan pegawai</li>
+                <li>Pegawai bebas lokasi atau memiliki dispensasi resmi</li>
+                <li>Anomali disebabkan masalah teknis (GPS drift, sinyal lemah)</li>
+            </ul>
+            <div class="mt-3 pt-3 border-t border-pandora-success/10">
+                <p class="text-[11px] text-pandora-success/80"><strong>Implikasi:</strong> False positive membantu meningkatkan akurasi sistem — digunakan sebagai feedback untuk memperbaiki algoritma deteksi. Tidak ada konsekuensi negatif bagi pegawai.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Leaflet Map --}}

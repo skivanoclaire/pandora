@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\JamKerja;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -33,11 +34,7 @@ class DashboardController extends Controller
 
         $tanggalStat = $isLibur && $hariKerjaTerakhir ? $hariKerjaTerakhir : $today;
 
-        // Jam masuk jadwal aktif (untuk fallback jika tw/mkttw NULL)
-        $jadwal = DB::table('sync_present_group')
-            ->whereRaw('berlaku <= CURRENT_DATE AND berakhir >= CURRENT_DATE')
-            ->first();
-        $jamMasuk = $jadwal->sen_awal ?? '07:30:00';
+        $jamMasuk = JamKerja::MASUK_BATAS;
 
         // === Stat cards (dari hari kerja terakhir jika hari ini libur) ===
         $totalPegawai = DB::table('sync_peg_pegawai')->count();
@@ -52,10 +49,11 @@ class DashboardController extends Controller
         $terlambatHariIni = DB::table('sync_present_rekap')
             ->where('tanggal', $tanggalStat)
             ->where(function ($q) use ($jamMasuk) {
-                $q->where('mkttw', 1)
-                  ->orWhere(function ($q2) use ($jamMasuk) {
-                      $q2->whereNotNull('jam_masuk')->where('jam_masuk', '>', $jamMasuk);
-                  });
+                $q->where(function ($q2) use ($jamMasuk) {
+                    $q2->whereNotNull('jam_masuk')
+                        ->where('jam_masuk', '>', $jamMasuk)
+                        ->where('jam_masuk', '<=', JamKerja::BATAS_SIANG);
+                });
             })
             ->count();
 
@@ -147,6 +145,7 @@ class DashboardController extends Controller
             ->count();
 
         // === Peta anomali (confidence tertinggi untuk gambaran paling mengkhawatirkan) ===
+        // Filter: koordinat valid dalam bounding box NKRI, pegawai bukan id 0
         $petaAnomali = DB::table('anomaly_flags as a')
             ->join('sync_present_rekap as r', function ($join) {
                 $join->on('a.id_pegawai', '=', 'r.id_pegawai')
@@ -154,14 +153,41 @@ class DashboardController extends Controller
             })
             ->whereNotNull('r.lat_berangkat')
             ->whereNotNull('r.long_berangkat')
+            ->where('a.id_pegawai', '>', 0)
+            ->whereBetween('r.lat_berangkat', [-11.0, 6.5])
+            ->whereBetween('r.long_berangkat', [95.0, 141.5])
             ->where('a.status_review', 'belum_direview')
             ->orderByDesc('a.confidence')
             ->orderBy('a.tingkat')
-            ->limit(200)
+            ->limit(1000)
             ->select([
+                'a.id',
                 'r.lat_berangkat as lat', 'r.long_berangkat as lng',
                 'a.jenis_anomali', 'a.tingkat', 'a.confidence',
             ])
+            ->get();
+
+        // === WFA di luar Kaltara (titik kuning di peta) ===
+        $petaWfaLuarKaltara = DB::table('sync_present_rekap as r')
+            ->join('sync_peg_pegawai as p', 'r.id_pegawai', '=', 'p.id_pegawai')
+            ->leftJoin('sync_ref_unit as u', 'p.id_unit', '=', 'u.id_unit')
+            ->whereBetween('r.tanggal', [$weekAgo, $today])
+            ->whereNotNull('r.lat_berangkat')
+            ->where(function ($q) {
+                $q->whereRaw("UPPER(r.nama_lokasi_berangkat) IN ('WORK FROM ANYWHERE', 'W F A')")
+                  ->orWhereRaw("UPPER(r.nama_lokasi_pulang) IN ('WORK FROM ANYWHERE', 'W F A')");
+            })
+            ->where(function ($q) {
+                $q->where('r.lat_berangkat', '<', 1.0)
+                  ->orWhere('r.lat_berangkat', '>', 4.5)
+                  ->orWhere('r.long_berangkat', '<', 115.0)
+                  ->orWhere('r.long_berangkat', '>', 118.0);
+            })
+            ->select([
+                'r.lat_berangkat as lat', 'r.long_berangkat as lng',
+                'r.tanggal', 'p.nama', 'p.nip', 'u.nama_unit',
+            ])
+            ->limit(100)
             ->get();
 
         // === Narasi otomatis ===
@@ -208,7 +234,7 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'totalPegawai', 'hadirHariIni', 'terlambatHariIni', 'tanpaKeterangan',
             'persenKehadiran', 'deltaTren', 'tren7hari', 'perOpd', 'opdAlert',
-            'anomaliTerbaru', 'totalAnomali', 'petaAnomali', 'narasi', 'lastSync',
+            'anomaliTerbaru', 'totalAnomali', 'petaAnomali', 'petaWfaLuarKaltara', 'narasi', 'lastSync',
             'isLibur', 'liburKeterangan', 'tanggalStat',
             'opdTerburuk', 'opdTerbaik',
         ));

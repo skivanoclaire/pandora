@@ -142,6 +142,11 @@
                               {{ request()->is('kehadiran/rekap*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
                         Rekap Harian
                     </a>
+                    <a href="/kehadiran/rekap-individu"
+                       class="block pl-12 pr-3 py-2 rounded-lg text-sm transition-colors
+                              {{ request()->is('kehadiran/rekap-individu*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
+                        Rekap Individu
+                    </a>
                     <a href="/kehadiran/log"
                        class="block pl-12 pr-3 py-2 rounded-lg text-sm transition-colors
                               {{ request()->is('kehadiran/log*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
@@ -187,6 +192,11 @@
                        class="block pl-12 pr-3 py-2 rounded-lg text-sm transition-colors
                               {{ request()->is('analitik/clustering*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
                         Clustering
+                    </a>
+                    <a href="/analitik/evaluasi"
+                       class="block pl-12 pr-3 py-2 rounded-lg text-sm transition-colors
+                              {{ request()->is('analitik/evaluasi*') ? 'text-pandora-accent bg-pandora-accent/10 border-l-2 border-pandora-accent' : 'text-pandora-muted hover:text-pandora-text hover:bg-pandora-surface-light' }}">
+                        Evaluasi Model
                     </a>
                 </div>
             </div>
@@ -324,6 +334,8 @@
                 <p class="text-xs text-pandora-muted/50">&copy; 2026 DKISP Kalimantan Utara - Bidang Aplikasi Informatika. All rights reserved.</p>
                 <p class="text-xs text-pandora-muted/40 mt-1">
                     Dikembangkan oleh : <a href="https://www.linkedin.com/in/noclaire/" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/60 hover:text-pandora-accent transition-colors">Bayu Adi H.</a>
+                    <span class="mx-1.5">·</span>
+                    <a href="https://github.com/skivanoclaire" target="_blank" rel="noopener noreferrer" class="text-pandora-accent/60 hover:text-pandora-accent transition-colors">GitHub</a>
                 </p>
             </div>
         </footer>

@@ -78,8 +78,8 @@
                 @forelse($lokasiSikara as $l)
                     <tr class="hover:bg-pandora-dark/30 transition-colors">
                         <td class="px-4 py-3 text-pandora-text">{{ $l->nama_lokasi ?: '(tanpa nama)' }}</td>
-                        <td class="px-4 py-3 text-center text-pandora-muted font-mono text-xs">{{ $l->latitude ? number_format($l->latitude, 6) : '-' }}</td>
-                        <td class="px-4 py-3 text-center text-pandora-muted font-mono text-xs">{{ $l->longitude ? number_format($l->longitude, 6) : '-' }}</td>
+                        <td class="px-4 py-3 text-center text-pandora-muted font-mono text-xs">{{ $l->latitude ? rtrim(rtrim(number_format($l->latitude, 7), '0'), '.') : '-' }}</td>
+                        <td class="px-4 py-3 text-center text-pandora-muted font-mono text-xs">{{ $l->longitude ? rtrim(rtrim(number_format($l->longitude, 7), '0'), '.') : '-' }}</td>
                         <td class="px-4 py-3 text-center text-pandora-text">{{ $l->radius ?: '-' }}</td>
                         <td class="px-4 py-3 text-center">
                             @php $units = $unitPerLokasi[$l->id_lokasi] ?? collect(); @endphp

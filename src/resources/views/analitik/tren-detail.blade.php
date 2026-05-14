@@ -33,6 +33,10 @@
         <p class="text-xs text-pandora-muted mt-1">Terlambat</p>
     </div>
     <div class="bg-pandora-surface rounded-lg p-3 border border-white/5 text-center">
+        <p class="text-xl font-bold text-pandora-gold">{{ number_format($summary->pulang_cepat) }}</p>
+        <p class="text-xs text-pandora-muted mt-1">Pulang Cepat</p>
+    </div>
+    <div class="bg-pandora-surface rounded-lg p-3 border border-white/5 text-center">
         <p class="text-xl font-bold text-pandora-danger">{{ number_format($summary->tidak_hadir) }}</p>
         <p class="text-xs text-pandora-muted mt-1">Tidak Hadir</p>
     </div>

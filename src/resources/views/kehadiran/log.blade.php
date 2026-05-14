@@ -48,7 +48,7 @@
                         <td class="px-4 py-3 text-xs">
                             @if($l->lat_berangkat)
                                 <p class="text-pandora-muted">{{ \Illuminate\Support\Str::limit($l->nama_lokasi_berangkat ?? 'Tidak dikenal', 20) }}</p>
-                                <p class="text-pandora-muted/50 font-mono text-[10px]">{{ number_format($l->lat_berangkat, 5) }}, {{ number_format($l->long_berangkat, 5) }}</p>
+                                <p class="text-pandora-muted/50 font-mono text-[10px]">{{ rtrim(rtrim(number_format($l->lat_berangkat, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($l->long_berangkat, 7), '0'), '.') }}</p>
                             @else
                                 <span class="text-pandora-muted/50">-</span>
                             @endif
@@ -56,7 +56,7 @@
                         <td class="px-4 py-3 text-xs">
                             @if($l->lat_pulang)
                                 <p class="text-pandora-muted">{{ \Illuminate\Support\Str::limit($l->nama_lokasi_pulang ?? 'Tidak dikenal', 20) }}</p>
-                                <p class="text-pandora-muted/50 font-mono text-[10px]">{{ number_format($l->lat_pulang, 5) }}, {{ number_format($l->long_pulang, 5) }}</p>
+                                <p class="text-pandora-muted/50 font-mono text-[10px]">{{ rtrim(rtrim(number_format($l->lat_pulang, 7), '0'), '.') }}, {{ rtrim(rtrim(number_format($l->long_pulang, 7), '0'), '.') }}</p>
                             @else
                                 <span class="text-pandora-muted/50">-</span>
                             @endif

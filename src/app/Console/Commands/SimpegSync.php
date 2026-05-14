@@ -37,7 +37,11 @@ class SimpegSync extends Command
         if (isset($result['error'])) {
             $this->error("  [{$tabel}] GAGAL: {$result['error']}");
         } else {
-            $this->line("  [{$tabel}] fetched={$result['fetched']} inserted={$result['inserted']} updated={$result['updated']}");
+            $msg = "  [{$tabel}] fetched={$result['fetched']} inserted={$result['inserted']} updated={$result['updated']}";
+            if (isset($result['deleted']) && $result['deleted'] > 0) {
+                $msg .= " deleted={$result['deleted']}";
+            }
+            $this->line($msg);
         }
     }
 }

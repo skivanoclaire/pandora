@@ -40,6 +40,7 @@
 <!-- Filter -->
 <div class="bg-pandora-surface rounded-xl p-4 md:p-5 border border-white/5 mb-5">
     <form method="GET" class="flex flex-wrap items-end gap-3">
+        @if($metode)<input type="hidden" name="metode" value="{{ $metode }}">@endif
         <div>
             <label class="block text-xs text-pandora-muted mb-1">Tingkat</label>
             <select name="tingkat" class="bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
@@ -65,7 +66,23 @@
                 <option value="belum_direview" {{ $status == 'belum_direview' ? 'selected' : '' }}>Belum Direview</option>
                 <option value="valid" {{ $status == 'valid' ? 'selected' : '' }}>Valid</option>
                 <option value="false_positive" {{ $status == 'false_positive' ? 'selected' : '' }}>False Positive</option>
+                <option value="corroborated" {{ $status == 'corroborated' ? 'selected' : '' }}>Corroborated (IF+DBSCAN)</option>
             </select>
+        </div>
+        <div>
+            <label class="block text-xs text-pandora-muted mb-1">Dari</label>
+            <input type="date" name="dari" value="{{ $dari }}"
+                   class="bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-pandora-muted mb-1">Sampai</label>
+            <input type="date" name="sampai" value="{{ $sampai }}"
+                   class="bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none">
+        </div>
+        <div>
+            <label class="block text-xs text-pandora-muted mb-1">Instansi</label>
+            <input type="text" name="instansi" value="{{ $instansi }}" placeholder="Cari instansi..."
+                   class="bg-pandora-dark border border-white/10 rounded-lg px-3 py-2 text-sm text-pandora-text focus:border-pandora-accent focus:outline-none w-40">
         </div>
         <div>
             <label class="block text-xs text-pandora-muted mb-1">Urutkan</label>
@@ -127,6 +144,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="bg-pandora-dark/50 text-pandora-muted text-xs uppercase tracking-wider">
+                    <th class="px-4 py-3 text-center">No</th>
                     <th class="px-4 py-3 text-center">
                         <a href="{{ $sortUrl('tingkat') }}" class="hover:text-pandora-accent transition-colors">T{!! $sortIcon('tingkat') !!}</a>
                     </th>
@@ -182,6 +200,7 @@
                 @forelse($anomalies as $a)
                     @php $meta = json_decode($a->metadata, true) ?? []; @endphp
                     <tr class="hover:bg-pandora-dark/30 transition-colors" x-data="{ showDetail: false }">
+                        <td class="px-4 py-3 text-center text-pandora-muted text-xs font-mono">{{ $anomalies->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 text-center">
                             @if($a->tingkat === 1) <span class="inline-flex w-6 h-6 rounded-full bg-pandora-danger/20 text-pandora-danger items-center justify-center text-xs font-bold">1</span>
                             @elseif($a->tingkat === 2) <span class="inline-flex w-6 h-6 rounded-full bg-pandora-gold/20 text-pandora-gold items-center justify-center text-xs font-bold">2</span>
@@ -189,8 +208,18 @@
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            <p class="text-pandora-text text-sm">{{ $a->nama }}</p>
-                            <p class="text-pandora-muted text-xs font-mono">{{ $a->nip }}</p>
+                            @if($a->nama)
+                                <p class="text-pandora-text text-sm">
+                                    {{ $a->nama }}
+                                    @if($a->pegawai_nonaktif)
+                                        <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-medium bg-pandora-muted/20 text-pandora-muted/80" title="Pegawai sudah pensiun atau mutasi keluar dari SIMPEG">non-aktif</span>
+                                    @endif
+                                </p>
+                                <p class="text-pandora-muted text-xs font-mono">{{ $a->nip ?? '-' }}</p>
+                            @else
+                                <p class="text-pandora-muted/60 text-sm italic">Pegawai tidak diketahui</p>
+                                <p class="text-pandora-muted/40 text-xs font-mono">id_pegawai: {{ $a->id_pegawai ?? '-' }}</p>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-pandora-muted text-xs">{{ \Illuminate\Support\Str::limit($a->nama_unit ?? '-', 20) }}</td>
                         <td class="px-4 py-3 text-center text-pandora-text text-xs">{{ $a->tanggal }}</td>
@@ -203,7 +232,12 @@
                         <td class="px-4 py-3 text-center">
                             <span class="text-xs font-medium {{ $a->confidence >= 0.8 ? 'text-pandora-danger' : ($a->confidence >= 0.6 ? 'text-pandora-gold' : 'text-pandora-muted') }}">{{ round($a->confidence * 100) }}%</span>
                         </td>
-                        <td class="px-4 py-3 text-pandora-muted text-xs">{{ str_replace('_', ' ', $a->metode_deteksi) }}</td>
+                        <td class="px-4 py-3 text-xs">
+                            <span class="text-pandora-muted">{{ str_replace('_', ' ', $a->metode_deteksi) }}</span>
+                            @if($a->corroborated)
+                                <span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">IF+DBSCAN</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-center">
                             @if($a->status_review === 'belum_direview') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-gold/20 text-pandora-gold">Pending</span>
                             @elseif($a->status_review === 'valid') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-danger/20 text-pandora-danger">Valid</span>
@@ -251,7 +285,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="9" class="px-4 py-8 text-center text-pandora-muted">Tidak ada anomali ditemukan</td></tr>
+                    <tr><td colspan="10" class="px-4 py-8 text-center text-pandora-muted">Tidak ada anomali ditemukan</td></tr>
                 @endforelse
             </tbody>
         </table>
