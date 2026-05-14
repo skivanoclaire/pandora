@@ -1020,6 +1020,8 @@ def _invalidate_resolved_anomalies(db: Session, tgl_awal: date, tgl_akhir: date)
                 should_resolve = True
 
             if should_resolve:
-                af.status_review = "false_positive_resolved_by_status_update"
+                # WFA = pengecualian kebijakan, bukan kegagalan model (model BENAR
+                # mendeteksi outlier; kebijakan WFA yang mengizinkannya).
+                af.status_review = "policy_exception"
                 af.catatan_review = "Auto-resolved: hari WFA (Work From Anywhere)"
                 af.updated_at = datetime.utcnow()

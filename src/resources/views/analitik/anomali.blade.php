@@ -65,7 +65,8 @@
                 <option value="">Semua</option>
                 <option value="belum_direview" {{ $status == 'belum_direview' ? 'selected' : '' }}>Belum Direview</option>
                 <option value="valid" {{ $status == 'valid' ? 'selected' : '' }}>Valid</option>
-                <option value="false_positive" {{ $status == 'false_positive' ? 'selected' : '' }}>False Positive</option>
+                <option value="false_positive" {{ $status == 'false_positive' ? 'selected' : '' }}>False Positive (semua: model salah + auto-resolved + policy exception)</option>
+                <option value="policy_exception" {{ $status == 'policy_exception' ? 'selected' : '' }}>Pengecualian Kebijakan</option>
                 <option value="corroborated" {{ $status == 'corroborated' ? 'selected' : '' }}>Corroborated (IF+DBSCAN)</option>
             </select>
         </div>
@@ -241,8 +242,10 @@
                         <td class="px-4 py-3 text-center">
                             @if($a->status_review === 'belum_direview') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-gold/20 text-pandora-gold">Pending</span>
                             @elseif($a->status_review === 'valid') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-danger/20 text-pandora-danger">Valid</span>
-                            @elseif($a->status_review === 'false_positive') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-muted/20 text-pandora-muted">FP</span>
-                            @else <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-accent/20 text-pandora-accent">{{ $a->status_review }}</span>
+                            @elseif($a->status_review === 'false_positive') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-success/20 text-pandora-success" title="Model salah deteksi">FP</span>
+                            @elseif($a->status_review === 'false_positive_resolved_by_status_update') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-success/20 text-pandora-success" title="Auto: data terkoreksi retroaktif">FP-Auto</span>
+                            @elseif($a->status_review === 'policy_exception') <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-accent/20 text-pandora-accent" title="Model benar, ada kebijakan yang mengizinkan">Pengecualian</span>
+                            @else <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-muted/20 text-pandora-muted">{{ $a->status_review }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-center">
@@ -263,14 +266,21 @@
                                             @method('PATCH')
                                             <textarea name="catatan_review" placeholder="Catatan (opsional)..."
                                                       class="w-full bg-pandora-dark border border-white/10 rounded px-2 py-1 text-xs text-pandora-text mb-2" rows="2"></textarea>
-                                            <div class="flex gap-2">
+                                            <div class="flex flex-col gap-1.5">
                                                 <button type="submit" name="status_review" value="valid"
-                                                        class="flex-1 px-2 py-1.5 rounded text-xs font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30">
+                                                        class="px-2 py-1.5 rounded text-xs font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30"
+                                                        title="Pelanggaran benar terjadi">
                                                     Valid
                                                 </button>
                                                 <button type="submit" name="status_review" value="false_positive"
-                                                        class="flex-1 px-2 py-1.5 rounded text-xs font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30">
+                                                        class="px-2 py-1.5 rounded text-xs font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30"
+                                                        title="Model salah deteksi (GPS drift, dll)">
                                                     False Positive
+                                                </button>
+                                                <button type="submit" name="status_review" value="policy_exception"
+                                                        class="px-2 py-1.5 rounded text-xs font-medium bg-pandora-accent/20 text-pandora-accent hover:bg-pandora-accent/30"
+                                                        title="Model benar, ada kebijakan yang mengizinkan (WFA, DL, dispensasi)">
+                                                    Pengecualian Kebijakan
                                                 </button>
                                             </div>
                                         </form>

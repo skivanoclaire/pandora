@@ -225,7 +225,8 @@
     <div class="text-sm text-pandora-muted leading-relaxed space-y-2">
         <p>Evaluasi menggunakan <strong class="text-pandora-text">semi-supervised validation</strong>: subset anomali yang telah direview oleh operator/validator BKD dijadikan ground truth. Precision dihitung dari proporsi anomali valid terhadap total yang sudah direview.</p>
         <p>Recall merupakan <strong class="text-pandora-text">estimasi</strong> karena tidak semua anomali dapat dilabeli manual. Dihitung sebagai TP / total anomali per metode — anomali yang belum direview dianggap sebagai positif yang belum terverifikasi. F1-Score dihitung dari harmonic mean Precision dan Recall estimasi.</p>
-        <p class="text-pandora-muted/60 text-xs">Status <em>false_positive_resolved_by_status_update</em> (auto-resolved oleh sistem saat status SIKARA berubah) dihitung sebagai false positive.</p>
+        <p class="text-pandora-muted/60 text-xs">Status <em>false_positive_resolved_by_status_update</em> (auto-resolved saat data SIKARA terkoreksi retroaktif, mis. DSP terlambat input) dihitung sebagai false positive — koreksi data tetap menandakan deteksi yang tidak relevan.</p>
+        <p class="text-pandora-muted/60 text-xs">Status <em>policy_exception</em> (model benar mendeteksi outlier, namun ada kebijakan yang mengizinkan — WFA, dinas luar, dispensasi resmi) <strong>tidak</strong> dihitung sebagai FP karena bukan kegagalan model. Direkam terpisah untuk audit kebijakan.</p>
     </div>
 </div>
 

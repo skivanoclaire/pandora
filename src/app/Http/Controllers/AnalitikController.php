@@ -623,7 +623,7 @@ class AnalitikController extends Controller
         if ($status === 'corroborated') {
             $query->where('a.corroborated', true)->where('a.status_review', 'belum_direview');
         } elseif ($status === 'false_positive') {
-            $query->whereIn('a.status_review', ['false_positive', 'false_positive_resolved_by_status_update']);
+            $query->whereIn('a.status_review', ['false_positive', 'false_positive_resolved_by_status_update', 'policy_exception']);
         } elseif ($status) {
             $query->where('a.status_review', $status);
         }
@@ -1008,7 +1008,7 @@ class AnalitikController extends Controller
     public function reviewAnomali(Request $request, int $id)
     {
         $request->validate([
-            'status_review' => 'required|in:valid,false_positive,belum_direview',
+            'status_review' => 'required|in:valid,false_positive,policy_exception,belum_direview',
             'catatan_review' => 'nullable|string|max:1000',
         ]);
 
@@ -1184,7 +1184,7 @@ class AnalitikController extends Controller
         if ($tingkat) $query->where('a.tingkat', $tingkat);
         if ($jenis) $query->where('a.jenis_anomali', $jenis);
         if ($status === 'false_positive') {
-            $query->whereIn('a.status_review', ['false_positive', 'false_positive_resolved_by_status_update']);
+            $query->whereIn('a.status_review', ['false_positive', 'false_positive_resolved_by_status_update', 'policy_exception']);
         } elseif ($status) {
             $query->where('a.status_review', $status);
         }

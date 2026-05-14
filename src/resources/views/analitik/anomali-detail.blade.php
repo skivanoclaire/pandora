@@ -349,24 +349,109 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Export PDF
     </a>
+    @php
+        $reviewStatusLabel = [
+            'valid' => 'Valid',
+            'false_positive' => 'False Positive',
+            'false_positive_resolved_by_status_update' => 'False Positive (Auto: data terkoreksi)',
+            'policy_exception' => 'Pengecualian Kebijakan',
+            'belum_direview' => 'Belum Direview',
+        ];
+        $reviewBadgeClass = [
+            'valid' => 'bg-pandora-danger/10 text-pandora-danger',
+            'false_positive' => 'bg-pandora-success/10 text-pandora-success',
+            'false_positive_resolved_by_status_update' => 'bg-pandora-success/10 text-pandora-success',
+            'policy_exception' => 'bg-pandora-accent/10 text-pandora-accent',
+            'belum_direview' => 'bg-pandora-surface-light text-pandora-muted',
+        ];
+        $presetAlasan = [
+            'policy_exception' => [
+                'WFA (Work From Anywhere) sesuai SE/SK',
+                'Dinas Luar / Tugas Lapangan',
+                'Pegawai bebas lokasi (permanen)',
+                'Dispensasi resmi (sakit, izin khusus)',
+                'Cuti / DSP diinput retroaktif',
+            ],
+            'false_positive' => [
+                'GPS drift / sinyal lemah',
+                'Koordinat di geofence unit tapi salah deteksi',
+                'Fake GPS yang salah dilabel',
+                'Bug / noise model (DBSCAN, isolation forest)',
+                'Sumber data fingerprint (tanpa koordinat)',
+            ],
+        ];
+    @endphp
     @if($anomaly->status_review === 'belum_direview')
-        <form method="POST" action="{{ route('analitik.anomali.review', $anomaly->id) }}" class="flex gap-2">
-            @csrf
-            @method('PATCH')
-            <button type="submit" name="status_review" value="valid"
-                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors"
-                    title="Konfirmasi bahwa anomali ini benar terjadi dan merupakan pelanggaran kehadiran yang perlu ditindaklanjuti.">
-                Tandai Valid
-            </button>
-            <button type="submit" name="status_review" value="false_positive"
-                    class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors"
-                    title="Tandai bahwa anomali ini bukan pelanggaran — misalnya karena pegawai bebas lokasi, dinas luar, atau ada konteks sah lainnya.">
-                False Positive
-            </button>
-        </form>
+        <div x-data="{
+                showForm: null,
+                catatan: '',
+                setStatus(s) { this.showForm = s; this.catatan = ''; }
+             }" class="flex flex-col gap-3 w-full">
+            <div class="flex gap-2 flex-wrap">
+                <button type="button" @click="setStatus('valid')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors"
+                        title="Konfirmasi bahwa anomali ini benar pelanggaran kehadiran yang perlu ditindaklanjuti.">
+                    Tandai Valid
+                </button>
+                <button type="button" @click="setStatus('false_positive')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors"
+                        title="Model salah deteksi: GPS drift, geofence salah konfig, fake GPS yang salah dilabel, dll.">
+                    False Positive <span class="text-pandora-success/60 text-xs">(model salah)</span>
+                </button>
+                <button type="button" @click="setStatus('policy_exception')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-pandora-accent/20 text-pandora-accent hover:bg-pandora-accent/30 transition-colors"
+                        title="Model benar mendeteksi outlier, tapi ada kebijakan/SK yang mengizinkan: WFA, dinas luar, bebas lokasi, dispensasi resmi.">
+                    Pengecualian Kebijakan <span class="text-pandora-accent/60 text-xs">(model benar, ada SK)</span>
+                </button>
+            </div>
+            <template x-if="showForm !== null">
+                <form method="POST" action="{{ route('analitik.anomali.review', $anomaly->id) }}"
+                      class="flex flex-col gap-2 p-4 rounded-lg bg-pandora-surface border border-white/10">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="status_review" :value="showForm">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-pandora-muted">Status:</label>
+                        <span class="text-xs font-medium" x-text="showForm"></span>
+                    </div>
+                    <label class="text-xs text-pandora-muted">Alasan preset (opsional):</label>
+                    <select x-show="showForm === 'policy_exception' || showForm === 'false_positive'"
+                            @change="catatan = $event.target.value"
+                            class="px-3 py-2 rounded bg-pandora-dark border border-white/10 text-sm text-pandora-text">
+                        <option value="">— Pilih atau tulis manual —</option>
+                        <template x-if="showForm === 'policy_exception'">
+                            <optgroup label="Pengecualian Kebijakan">
+                                @foreach($presetAlasan['policy_exception'] as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </optgroup>
+                        </template>
+                        <template x-if="showForm === 'false_positive'">
+                            <optgroup label="Model Salah Deteksi">
+                                @foreach($presetAlasan['false_positive'] as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </optgroup>
+                        </template>
+                    </select>
+                    <label class="text-xs text-pandora-muted mt-1">Catatan / penjelasan:</label>
+                    <textarea name="catatan_review" rows="3" maxlength="1000" x-model="catatan"
+                              placeholder="Tulis dasar keputusan (mis. nomor SK, pengamatan teknis, dll)"
+                              class="px-3 py-2 rounded bg-pandora-dark border border-white/10 text-sm text-pandora-text resize-y"></textarea>
+                    <div class="flex gap-2 mt-1">
+                        <button type="submit" class="px-4 py-2 rounded text-sm font-medium bg-pandora-accent text-white hover:bg-pandora-accent/80 transition-colors">
+                            Simpan Review
+                        </button>
+                        <button type="button" @click="showForm = null" class="px-4 py-2 rounded text-sm text-pandora-muted hover:text-pandora-text transition-colors">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </template>
+        </div>
     @else
-        <span class="px-4 py-2 rounded-lg text-sm {{ $anomaly->status_review === 'valid' ? 'bg-pandora-danger/10 text-pandora-danger' : 'bg-pandora-success/10 text-pandora-success' }}">
-            Direview: {{ str_replace('_', ' ', $anomaly->status_review) }}
+        <span class="px-4 py-2 rounded-lg text-sm {{ $reviewBadgeClass[$anomaly->status_review] ?? 'bg-pandora-surface-light text-pandora-muted' }}">
+            Direview: {{ $reviewStatusLabel[$anomaly->status_review] ?? $anomaly->status_review }}
         </span>
         {{-- Tombol revisi --}}
         <div x-data="{ confirmRevisi: false }" class="relative">
@@ -374,7 +459,7 @@
                 Revisi
             </button>
             <div x-show="confirmRevisi" @click.outside="confirmRevisi = false" x-transition
-                 class="absolute bottom-full mb-2 left-0 bg-pandora-surface border border-white/10 rounded-lg p-3 shadow-xl z-10 w-56">
+                 class="absolute bottom-full mb-2 left-0 bg-pandora-surface border border-white/10 rounded-lg p-3 shadow-xl z-10 w-64">
                 <p class="text-xs text-pandora-muted mb-2">Ubah status review:</p>
                 <form method="POST" action="{{ route('analitik.anomali.review', $anomaly->id) }}" class="flex flex-col gap-2">
                     @csrf
@@ -383,7 +468,10 @@
                         <button type="submit" name="status_review" value="valid" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-danger/20 text-pandora-danger hover:bg-pandora-danger/30 transition-colors">Tandai Valid</button>
                     @endif
                     @if($anomaly->status_review !== 'false_positive')
-                        <button type="submit" name="status_review" value="false_positive" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors">Tandai False Positive</button>
+                        <button type="submit" name="status_review" value="false_positive" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-success/20 text-pandora-success hover:bg-pandora-success/30 transition-colors">False Positive (model salah)</button>
+                    @endif
+                    @if($anomaly->status_review !== 'policy_exception')
+                        <button type="submit" name="status_review" value="policy_exception" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-accent/20 text-pandora-accent hover:bg-pandora-accent/30 transition-colors">Pengecualian Kebijakan</button>
                     @endif
                     <button type="submit" name="status_review" value="belum_direview" class="px-3 py-1.5 rounded text-xs font-medium bg-pandora-surface-light text-pandora-muted hover:text-pandora-text transition-colors">Kembalikan ke Belum Direview</button>
                 </form>
@@ -398,40 +486,59 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Panduan Review Anomali
     </h3>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         {{-- Valid --}}
         <div class="rounded-lg border border-pandora-danger/20 bg-pandora-danger/5 p-4">
             <div class="flex items-center gap-2 mb-2">
                 <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-danger/20 text-pandora-danger">Tandai Valid</span>
             </div>
-            <p class="text-sm text-pandora-text mb-2">Pilih ini jika anomali <strong>benar-benar terjadi</strong> dan merupakan pelanggaran kehadiran.</p>
-            <p class="text-xs text-pandora-muted mb-2"><strong>Tandai valid apabila:</strong></p>
+            <p class="text-sm text-pandora-text mb-2">Anomali <strong>benar terjadi</strong> dan merupakan pelanggaran kehadiran.</p>
+            <p class="text-xs text-pandora-muted mb-2"><strong>Pilih bila:</strong></p>
             <ul class="text-xs text-pandora-muted space-y-1 list-disc list-inside">
-                <li>Pegawai terbukti menggunakan fake GPS (koordinat identik berulang, lokasi tidak masuk akal)</li>
-                <li>Pegawai absen di lokasi yang bukan unitnya tanpa alasan sah (tidak ada DL/DSP)</li>
-                <li>Velocity perpindahan tidak mungkin secara fisik (>300 km/jam)</li>
-                <li>Pola multivariat yang mencurigakan tanpa penjelasan operasional</li>
+                <li>Fake GPS (koordinat identik berulang)</li>
+                <li>Absen di luar geofence tanpa DL/DSP/SK</li>
+                <li>Velocity tidak mungkin secara fisik (>300 km/jam)</li>
+                <li>Pola mencurigakan tanpa penjelasan operasional</li>
             </ul>
             <div class="mt-3 pt-3 border-t border-pandora-danger/10">
-                <p class="text-[11px] text-pandora-danger/80"><strong>Implikasi:</strong> Anomali valid akan masuk laporan ke pimpinan OPD, dihitung dalam metrik Precision sistem, dan dapat menjadi dasar tindak lanjut pembinaan pegawai oleh Inspektorat.</p>
+                <p class="text-[11px] text-pandora-danger/80"><strong>Implikasi:</strong> Masuk laporan ke pimpinan OPD, dihitung sebagai TP di metrik Precision, jadi dasar pembinaan oleh Inspektorat.</p>
             </div>
         </div>
-        {{-- False Positive --}}
+        {{-- False Positive (model salah) --}}
         <div class="rounded-lg border border-pandora-success/20 bg-pandora-success/5 p-4">
             <div class="flex items-center gap-2 mb-2">
-                <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-success/20 text-pandora-success">Tandai False Positive</span>
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-success/20 text-pandora-success">False Positive</span>
+                <span class="text-[10px] text-pandora-success/70">model salah</span>
             </div>
-            <p class="text-sm text-pandora-text mb-2">Pilih ini jika anomali <strong>bukan pelanggaran</strong> — ada konteks sah yang menjelaskan.</p>
-            <p class="text-xs text-pandora-muted mb-2"><strong>Tandai false positive apabila:</strong></p>
+            <p class="text-sm text-pandora-text mb-2"><strong>Model salah mendeteksi</strong> — data atau sinyal tidak akurat.</p>
+            <p class="text-xs text-pandora-muted mb-2"><strong>Pilih bila:</strong></p>
             <ul class="text-xs text-pandora-muted space-y-1 list-disc list-inside">
-                <li>Pegawai memang bertugas di lokasi tersebut (dinas luar, tugas lapangan)</li>
-                <li>Koordinat berada di geofence unit sendiri tapi sistem salah deteksi</li>
-                <li>Ada SK/surat tugas yang menjelaskan keberadaan pegawai</li>
-                <li>Pegawai bebas lokasi atau memiliki dispensasi resmi</li>
-                <li>Anomali disebabkan masalah teknis (GPS drift, sinyal lemah)</li>
+                <li>GPS drift / sinyal lemah menyebabkan koordinat melenceng</li>
+                <li>Koordinat sebenarnya di geofence tapi salah deteksi</li>
+                <li>Fake GPS yang salah dilabel sebagai pelanggaran nyata</li>
+                <li>Noise model (DBSCAN, isolation forest false alarm)</li>
+                <li>Sumber data fingerprint (tanpa koordinat)</li>
             </ul>
             <div class="mt-3 pt-3 border-t border-pandora-success/10">
-                <p class="text-[11px] text-pandora-success/80"><strong>Implikasi:</strong> False positive membantu meningkatkan akurasi sistem — digunakan sebagai feedback untuk memperbaiki algoritma deteksi. Tidak ada konsekuensi negatif bagi pegawai.</p>
+                <p class="text-[11px] text-pandora-success/80"><strong>Implikasi:</strong> Masuk feedback retraining ML, menjadi dasar perbaikan algoritma/konfigurasi deteksi. Tidak konsekuensi negatif bagi pegawai.</p>
+            </div>
+        </div>
+        {{-- Policy Exception --}}
+        <div class="rounded-lg border border-pandora-accent/20 bg-pandora-accent/5 p-4">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="px-2 py-0.5 rounded text-xs font-bold bg-pandora-accent/20 text-pandora-accent">Pengecualian Kebijakan</span>
+                <span class="text-[10px] text-pandora-accent/70">model benar</span>
+            </div>
+            <p class="text-sm text-pandora-text mb-2"><strong>Model benar</strong> mendeteksi outlier, namun ada kebijakan yang mengizinkan.</p>
+            <p class="text-xs text-pandora-muted mb-2"><strong>Pilih bila:</strong></p>
+            <ul class="text-xs text-pandora-muted space-y-1 list-disc list-inside">
+                <li>WFA resmi (SE/SK pasca Lebaran, masa pandemi, dll)</li>
+                <li>Dinas Luar / Tugas Lapangan dengan SPT</li>
+                <li>Pegawai bebas lokasi (struktural/permanen)</li>
+                <li>Dispensasi sakit, izin khusus, cuti retroaktif</li>
+            </ul>
+            <div class="mt-3 pt-3 border-t border-pandora-accent/10">
+                <p class="text-[11px] text-pandora-accent/80"><strong>Implikasi:</strong> Direkam terpisah untuk audit kebijakan; <strong>tidak</strong> dihitung sebagai FP (precision tetap akurat) dan tidak dipakai untuk retraining (model tidak salah).</p>
             </div>
         </div>
     </div>

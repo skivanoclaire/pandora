@@ -9,8 +9,12 @@ class EvaluasiController extends Controller
 {
     public function index(Request $request)
     {
-        // Status review yang dianggap false positive (manual + auto-resolved)
+        // Status review yang dianggap false positive (manual + auto-resolved by data correction).
+        // CATATAN: 'policy_exception' TIDAK dihitung sebagai FP karena model BENAR mendeteksi
+        // outlier — yang berlaku adalah pengecualian kebijakan (WFA, dinas luar, dispensasi).
+        // Memasukkan policy_exception ke FP akan menyesatkan precision metric & feedback ML.
         $fpStatuses = ['false_positive', 'false_positive_resolved_by_status_update'];
+        $reviewedStatuses = ['valid', 'false_positive', 'false_positive_resolved_by_status_update', 'policy_exception'];
 
         // =============================================
         // A. Metrik per metode deteksi
@@ -21,6 +25,7 @@ class EvaluasiController extends Controller
                 COUNT(*) AS total,
                 COUNT(*) FILTER (WHERE status_review = 'valid') AS tp,
                 COUNT(*) FILTER (WHERE status_review IN ('false_positive','false_positive_resolved_by_status_update')) AS fp,
+                COUNT(*) FILTER (WHERE status_review = 'policy_exception') AS policy_exception,
                 COUNT(*) FILTER (WHERE status_review = 'belum_direview') AS belum_direview,
                 AVG(confidence) AS avg_confidence
             ")
@@ -38,6 +43,7 @@ class EvaluasiController extends Controller
                 COUNT(*) AS total,
                 COUNT(*) FILTER (WHERE status_review = 'valid') AS tp,
                 COUNT(*) FILTER (WHERE status_review IN ('false_positive','false_positive_resolved_by_status_update')) AS fp,
+                COUNT(*) FILTER (WHERE status_review = 'policy_exception') AS policy_exception,
                 COUNT(*) FILTER (WHERE status_review = 'belum_direview') AS belum_direview,
                 AVG(confidence) AS avg_confidence
             ")
@@ -55,6 +61,7 @@ class EvaluasiController extends Controller
                 COUNT(*) AS total,
                 COUNT(*) FILTER (WHERE status_review = 'valid') AS tp,
                 COUNT(*) FILTER (WHERE status_review IN ('false_positive','false_positive_resolved_by_status_update')) AS fp,
+                COUNT(*) FILTER (WHERE status_review = 'policy_exception') AS policy_exception,
                 COUNT(*) FILTER (WHERE status_review = 'belum_direview') AS belum_direview,
                 AVG(confidence) AS avg_confidence
             ")
@@ -67,7 +74,7 @@ class EvaluasiController extends Controller
         $groundTruth = DB::table('anomaly_flags as af')
             ->join('sync_peg_pegawai as p', 'p.id_pegawai', '=', 'af.id_pegawai')
             ->leftJoin('users as u', 'u.id', '=', 'af.direview_oleh')
-            ->whereIn('af.status_review', ['valid', ...$fpStatuses])
+            ->whereIn('af.status_review', $reviewedStatuses)
             ->select(
                 'af.id', 'af.tanggal', 'p.nip', 'p.nama',
                 'af.metode_deteksi', 'af.jenis_anomali', 'af.tingkat',
@@ -86,21 +93,28 @@ class EvaluasiController extends Controller
     {
         $tp = (int) $row->tp;
         $fp = (int) $row->fp;
+        $policyException = (int) ($row->policy_exception ?? 0);
         $reviewed = $tp + $fp;
         $total = (int) $row->total;
         $belum = (int) $row->belum_direview;
 
+        // Precision: dari yang direview (valid + false_positive). Policy exception
+        // dikeluarkan karena bukan kegagalan model.
         $precision = $reviewed > 0 ? $tp / $reviewed : null;
 
-        // Recall estimasi: TP / total anomali per metode
-        // (belum_direview dianggap positif yang belum terverifikasi)
-        $recall = $total > 0 ? $tp / $total : null;
+        // Recall estimasi: TP / total anomali yang relevan untuk evaluasi model.
+        // Policy exception dikeluarkan dari denominator: deteksi-nya benar tapi
+        // bukan "pelanggaran yang seharusnya ditangkap" → bukan FN juga.
+        $totalEvaluable = max($total - $policyException, 0);
+        $recall = $totalEvaluable > 0 ? $tp / $totalEvaluable : null;
 
         $f1 = ($precision !== null && $recall !== null && ($precision + $recall) > 0)
             ? 2 * $precision * $recall / ($precision + $recall)
             : null;
 
         $row->reviewed = $reviewed;
+        $row->policy_exception = $policyException;
+        $row->total_evaluable = $totalEvaluable;
         $row->precision = $precision;
         $row->recall = $recall;
         $row->f1 = $f1;
