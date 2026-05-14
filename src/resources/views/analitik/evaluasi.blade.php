@@ -27,6 +27,7 @@
     <div class="bg-pandora-surface rounded-xl border border-white/5 p-4">
         <p class="text-[10px] text-pandora-muted uppercase tracking-wider">Total Anomali</p>
         <p class="text-2xl font-bold text-white mt-1">{{ number_format($overall->total) }}</p>
+        <p class="text-[10px] text-pandora-muted">Evaluable: {{ number_format($overall->total_evaluable) }}</p>
     </div>
     <div class="bg-pandora-surface rounded-xl border border-white/5 p-4">
         <p class="text-[10px] text-pandora-muted uppercase tracking-wider">Sudah Direview</p>
@@ -37,6 +38,7 @@
         <p class="text-[10px] text-pandora-muted uppercase tracking-wider">Precision</p>
         <p class="text-2xl font-bold {{ $overall->precision !== null && $overall->precision >= 0.5 ? 'text-pandora-success' : 'text-pandora-gold' }} mt-1">{{ $fmt($overall->precision) }}</p>
         <p class="text-[10px] text-pandora-muted">TP: {{ $overall->tp }} &middot; FP: {{ $overall->fp }}</p>
+        <p class="text-[10px] text-pandora-accent/80">+{{ number_format($overall->policy_exception) }} pengecualian</p>
     </div>
     <div class="bg-pandora-surface rounded-xl border border-white/5 p-4">
         <p class="text-[10px] text-pandora-muted uppercase tracking-wider">F1-Score</p>
@@ -47,8 +49,9 @@
     <div class="bg-pandora-surface rounded-xl border border-white/5 p-3 flex items-center gap-3">
         <canvas id="chartPie" class="w-16 h-16 flex-shrink-0"></canvas>
         <div class="text-[10px] leading-relaxed">
-            <p class="text-pandora-danger">{{ $overall->tp }} valid</p>
-            <p class="text-pandora-success">{{ $overall->fp }} FP</p>
+            <p class="text-pandora-danger">{{ number_format($overall->tp) }} valid</p>
+            <p class="text-pandora-success">{{ number_format($overall->fp) }} FP</p>
+            <p class="text-pandora-accent">{{ number_format($overall->policy_exception) }} pengec.</p>
             <p class="text-pandora-muted">{{ number_format($overall->belum_direview) }} belum</p>
         </div>
     </div>
@@ -75,6 +78,7 @@
                     <th class="px-4 py-3 text-center">Total</th>
                     <th class="px-4 py-3 text-center">TP</th>
                     <th class="px-4 py-3 text-center">FP</th>
+                    <th class="px-4 py-3 text-center" title="Pengecualian Kebijakan — model benar, kebijakan izinkan">Pengec.</th>
                     <th class="px-4 py-3 text-center">Belum</th>
                     <th class="px-4 py-3 text-center">Review %</th>
                     <th class="px-4 py-3 text-center">Precision</th>
@@ -90,6 +94,7 @@
                     <td class="px-4 py-3 text-center text-pandora-muted">{{ number_format($m->total) }}</td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=valid&metode={{ $m->metode_deteksi }}" class="text-pandora-success hover:underline">{{ $m->tp }}</a></td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=false_positive&metode={{ $m->metode_deteksi }}" class="text-pandora-danger hover:underline">{{ $m->fp }}</a></td>
+                    <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=policy_exception&metode={{ $m->metode_deteksi }}" class="text-pandora-accent hover:underline">{{ number_format($m->policy_exception) }}</a></td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=belum_direview&metode={{ $m->metode_deteksi }}" class="text-pandora-muted hover:underline hover:text-pandora-text">{{ number_format($m->belum_direview) }}</a></td>
                     <td class="px-4 py-3 text-center">
                         <div class="flex items-center gap-2 justify-center">
@@ -123,6 +128,7 @@
                     <th class="px-4 py-3 text-center">Total</th>
                     <th class="px-4 py-3 text-center">TP</th>
                     <th class="px-4 py-3 text-center">FP</th>
+                    <th class="px-4 py-3 text-center" title="Pengecualian Kebijakan — model benar, kebijakan izinkan">Pengec.</th>
                     <th class="px-4 py-3 text-center">Belum</th>
                     <th class="px-4 py-3 text-center">Review %</th>
                     <th class="px-4 py-3 text-center">Precision</th>
@@ -138,6 +144,7 @@
                     <td class="px-4 py-3 text-center text-pandora-muted">{{ number_format($t->total) }}</td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=valid&tingkat={{ $t->tingkat }}" class="text-pandora-success hover:underline">{{ $t->tp }}</a></td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=false_positive&tingkat={{ $t->tingkat }}" class="text-pandora-danger hover:underline">{{ $t->fp }}</a></td>
+                    <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=policy_exception&tingkat={{ $t->tingkat }}" class="text-pandora-accent hover:underline">{{ number_format($t->policy_exception) }}</a></td>
                     <td class="px-4 py-3 text-center"><a href="/analitik/anomali?status=belum_direview&tingkat={{ $t->tingkat }}" class="text-pandora-muted hover:underline hover:text-pandora-text">{{ number_format($t->belum_direview) }}</a></td>
                     <td class="px-4 py-3 text-center">
                         <div class="flex items-center gap-2 justify-center">
@@ -197,6 +204,10 @@
                     <td class="px-4 py-2.5 text-center">
                         @if($gt->status_review === 'valid')
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-danger/15 text-pandora-danger">Valid</span>
+                        @elseif($gt->status_review === 'policy_exception')
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-accent/15 text-pandora-accent" title="Model benar, ada kebijakan yang izinkan">Pengecualian</span>
+                        @elseif($gt->status_review === 'false_positive_resolved_by_status_update')
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-success/15 text-pandora-success" title="Auto-resolved oleh koreksi data SIKARA">FP-Auto</span>
                         @else
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-pandora-success/15 text-pandora-success">False Positive</span>
                         @endif
@@ -272,11 +283,11 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(document.getElementById('chartPie'), {
         type: 'doughnut',
         data: {
-            labels: ['Valid', 'FP', 'Belum'],
+            labels: ['Valid', 'FP', 'Pengecualian', 'Belum'],
             datasets: [{
-                data: [{{ $overall->tp }}, {{ $overall->fp }}, {{ $overall->belum_direview }}],
-                backgroundColor: [colors.danger + 'cc', colors.success + 'cc', colors.surface],
-                borderColor: [colors.danger, colors.success, colors.muted + '33'],
+                data: [{{ $overall->tp }}, {{ $overall->fp }}, {{ $overall->policy_exception }}, {{ $overall->belum_direview }}],
+                backgroundColor: [colors.danger + 'cc', colors.success + 'cc', colors.accent + 'cc', colors.surface],
+                borderColor: [colors.danger, colors.success, colors.accent, colors.muted + '33'],
                 borderWidth: 1,
             }]
         },
