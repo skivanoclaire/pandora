@@ -42,5 +42,14 @@ src/public/hot
 
 # Python cache
 __pycache__/
+**/__pycache__/
 *.pyc
 docker-compose.yml
+
+# Archives
+*.zip
+
+# Markdown notes/docs (kecuali README)
+*.md
+!README.md
+!**/README.md
